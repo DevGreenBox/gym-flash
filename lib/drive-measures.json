@@ -1,0 +1,21 @@
+{
+  "full": {
+    "aspect": 5.4465,
+    "plate": {
+      "left": 7.686,
+      "width": 40.734,
+      "top": 14.419,
+      "height": 73.023
+    }
+  },
+  "solo": {
+    "aspect": 3.343,
+    "plate": {
+      "left": 15.652,
+      "width": 82.957,
+      "top": 4.651,
+      "height": 91.279
+    }
+  },
+  "pxPerMm": 9.568
+}

@@ -1,0 +1,580 @@
+@import "tailwindcss";
+
+@theme {
+  /* Восемьдесят процентов листа — нейтраль, эмоция идёт дозой. */
+  --color-paper: #faf8f7; /* молочный */
+  --color-ink: #242326; /* графит */
+  --color-hairline: #2423261f;
+
+  /* Дозированные оттенки: каждый работает ровно в одном месте. */
+  --color-lavender: #b9a7c8; /* пыльная лаванда — заливка героя */
+  --color-rose: #e7cad7; /* холодный розовый — подложка формы */
+  --color-silver: #d8d8dc; /* серебристый — экраны под фотографию */
+  --color-champagne: #d9c3a0; /* шампанское — волосок над меткой раздела */
+
+  --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-prata), Georgia, serif;
+  --font-hand: var(--font-caveat), cursive;
+
+  --radius-pill: 999px;
+  --radius-card: 28px;
+  --radius-field: 14px;
+
+  --ease-soft: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Цвет флешки — единственный цвет на странице. Регистрируем, чтобы он
+   умел плавно перетекать при смене свотча. */
+@property --brand {
+  syntax: "<color>";
+  inherits: true;
+  /* красный из логотипа заказчика — им светятся страницы без конструктора */
+  initial-value: #c0332b;
+}
+
+:root {
+  color-scheme: light;
+
+  /* Сетка сайта: 12 колонок, поля 100 px, межколонник 20 px.
+     На узком экране поля сжимаются до 20 px — стоколоночные поля
+     на телефоне съели бы половину ширины. */
+  --shell-margin: 20px;
+  --gutter: 20px;
+  --section: 80px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --shell-margin: 100px;
+    --section: 150px;
+  }
+}
+
+/* Полоса контента: поля по краям, максимум — 12 колонок по 20 px
+   межколонника при 1320 px. */
+.shell {
+  width: min(1320px, 100% - var(--shell-margin) * 2);
+  margin-inline: auto;
+}
+
+/* Двенадцать колонок. Ниже 768 px колонок нет — там всё в один столбец. */
+.grid12 {
+  display: grid;
+  gap: var(--gutter);
+}
+
+@media (min-width: 768px) {
+  .grid12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+/* Те же колонки, но только с широкого экрана. Ниже позиция конструктора
+   остаётся обычным потоком: липкому превью нужно ехать вдоль всей позиции,
+   а внутри сетки у него своя строка высотой в него самого — ехать было бы
+   некуда, и `sticky` просто не сработал бы. */
+.grid12-lg {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .grid12-lg {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--gutter);
+    align-items: start;
+  }
+}
+
+/* Межблочный отступ живёт только сверху. Если давать его с обеих сторон,
+   у соседних блоков поля складываются и вместо 150 px получается 300 —
+   именно так на странице появляются дыры. */
+.section {
+  padding-block-start: var(--section);
+}
+
+/* Блок, отчёркнутый линией: отбивка идёт до волоска, а не после него.
+   Иначе линия прилипает к последней строке предыдущего блока, и над ней
+   остаётся щель в тридцать пикселей при полутора сотнях под ней. */
+.section-ruled {
+  margin-block-start: var(--section);
+  border-block-start: 1px solid var(--color-hairline);
+  padding-block-start: calc(var(--section) / 2);
+}
+
+/* После полноэкранного героя своего отступа не нужно: пустое поле
+   фотографии под кнопкой и есть межблочный воздух. */
+.hero + .section {
+  padding-block-start: 0;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* У дисплейной гарнитуры один вес. Никакого font-semibold на заголовках:
+   браузер подделает жирность и развалит контраст штрихов. */
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
+
+/* Поля ввода в фокусной рамке не нуждаются: у них дочерчивается чернильный
+   волосок (`.field`), а рамка вокруг подчёркнутого поля читается как ошибка. */
+:where(a, button, select, [tabindex]):focus-visible {
+  /* не `--brand`: свой оттенок можно выбрать почти белым, и рамка фокуса
+     на молочной бумаге исчезла бы. `--brand-ui` затемнён до 3 : 1. */
+  outline: 2px solid var(--brand-ui, var(--brand));
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Цвет выбранной флешки живёт на :root — его видят и шапка, и подвал.
+   Регистрация выше даёт ему плавное перетекание. */
+html {
+  transition: --brand 420ms var(--ease-soft);
+}
+
+/* Движение вместо всплывающих блоков: над меткой раздела прочерчивается
+   волосок. Это типографский жест, а не fade-up из библиотеки — блок никуда
+   не едет и не мигает, читать можно с первого кадра. Рисует браузер,
+   JavaScript не участвует. */
+.rule {
+  position: relative;
+  padding-top: 22px;
+}
+
+.rule::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--color-champagne);
+  transform-origin: left;
+}
+
+@keyframes draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-12px) rotate(-0.5deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .rule::before {
+      animation: draw linear both;
+      animation-timeline: view();
+      animation-range: entry 12% cover 24%;
+    }
+  }
+
+  .float {
+    animation: float 9s ease-in-out infinite;
+  }
+}
+
+/* ——— Движение по прокрутке ———
+   Всё ниже рисует браузер по своей же прокрутке: JavaScript не участвует,
+   на слабом телефоне ничего не считается в главном потоке. Где таймлайнов
+   нет, страница просто стоит на месте — не сломанная, спокойная. */
+
+@keyframes wipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translateY(7%) scale(1.07);
+  }
+}
+
+/* Первый экран собирается по строкам. Сдвиг 12 px, а не сорок: заголовок
+   встаёт на место, а не прилетает из-за края. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Заголовок героя меняется сам: три обещания по три секунды. Смена —
+   свайп на 22 px и прозрачность, тот же закон, что и у остального движения
+   на сайте: строка уезжает, а не мигает. */
+@keyframes hero-swipe {
+  0%,
+  3.33% {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  6.67% {
+    opacity: 1;
+    transform: none;
+  }
+  33.33% {
+    opacity: 1;
+    transform: none;
+  }
+  36.67%,
+  100% {
+    opacity: 0;
+    transform: translateX(-26px);
+  }
+}
+
+/* Кадры лежат стопкой. Первый — подложка, он виден всегда; второй
+   и третий проявляются над ним по очереди. Так на стыке не бывает
+   провала, когда оба кадра наполовину прозрачны и сквозь них светит
+   завеса. */
+.hero-frame + .hero-frame {
+  opacity: 0;
+}
+
+/* Цикл 18 с, по 6 с на обещание: 4,8 с строка стоит и 1,2 с идёт смена.
+   Кадры перекрещиваются — фотографии можно растворять друг в друге.
+   Строки НЕ перекрещиваются: две длинные надписи в полупрозрачности
+   накладываются буквами и читаются как каша. Старая уходит за 0,6 с,
+   новая приходит за следующие 0,6 с, и провал между ними приходится
+   ровно на середину перехода кадров — смена читается одним движением. */
+@keyframes hero-fade {
+  0% {
+    opacity: 0;
+  }
+  6.67% {
+    opacity: 1;
+  }
+  33.33% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Строки лежат друг на друге в одной ячейке: блок стоит по самой высокой
+   и не прыгает при смене. Без анимации видна первая — страница
+   не остаётся с тремя заголовками разом. */
+.hero-swipe > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+}
+
+.hero-swipe > span:first-child {
+  opacity: 1;
+}
+
+/* Блок проступает, пока входит в кадр. Только прозрачность — ничего
+   не едет и не прыгает, строку можно читать с первого кадра. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Шапка: сколько страницы прочитано. Волосок в цвет выбранной флешки —
+   единственная полоса на сайте, которая двигается сама. */
+.read-progress {
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 2px;
+  background: var(--brand-ui, var(--brand));
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Заход на сайт: заголовок, подпись и кнопка проступают по очереди.
+     Заливка `both` держит начальное состояние до старта, поэтому первый
+     кадр не мигает готовым текстом. */
+  .rise > * {
+    animation: rise 720ms var(--ease-soft) both;
+  }
+
+  .rise > :nth-child(2) {
+    animation-delay: 120ms;
+  }
+
+  .rise > :nth-child(3) {
+    animation-delay: 240ms;
+  }
+
+  .hero-swipe > span {
+    animation: hero-swipe 18s ease-in-out infinite;
+  }
+
+  /* Первый кадр не гаснет никогда — он подложка. Если гасить его вместе
+     с приходом второго, в середине перехода оба стоят на половине,
+     и сквозь них на четверть просвечивает бумага: переход даёт вспышку. */
+  .hero-frame:nth-child(2),
+  .hero-frame:nth-child(3) {
+    animation: hero-fade 18s ease-in-out infinite;
+  }
+
+  /* Задержки общие для кадра и строки. Первая пара стартует с −1,2 с:
+     при загрузке она уже полностью на месте, и страница не открывается
+     пустым первым экраном. */
+  .hero-swipe > span:nth-child(1) {
+    animation-delay: -1.2s;
+  }
+
+  .hero-swipe > span:nth-child(2),
+  .hero-frame:nth-child(2) {
+    animation-delay: 4.8s;
+  }
+
+  .hero-swipe > span:nth-child(3),
+  .hero-frame:nth-child(3) {
+    animation-delay: 10.8s;
+  }
+
+  @supports (animation-timeline: view()) {
+    /* Дистанция фиксированная — 340 px входа, а не доля высоты блока:
+       иначе высокий конструктор проявлялся бы полтора экрана, а короткая
+       строка — мгновенно. Герой исключён, у него своё появление. */
+    main section:not(.hero) > .shell,
+    footer > .shell {
+      animation: fade-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 340px;
+    }
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .read-progress {
+      animation: wipe linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* Фотография героя отстаёт от текста: первый экран перестаёт быть
+       картинкой под заголовком и начинает вести себя как глубина. */
+    .hero-photo {
+      animation: drift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 100vh;
+      will-change: transform;
+    }
+  }
+
+  /* Ответ раскрывается ростом высоты, а не рывком. `interpolate-size`
+     разрешает переход к `auto`; где его нет — обычный `details`. */
+  @supports (interpolate-size: allow-keywords) {
+    :root {
+      interpolate-size: allow-keywords;
+    }
+
+    details::details-content {
+      block-size: 0;
+      overflow: hidden;
+      transition:
+        block-size 340ms var(--ease-soft),
+        content-visibility 340ms allow-discrete;
+    }
+
+    details[open]::details-content {
+      block-size: auto;
+    }
+  }
+}
+
+/* Цвет корпуса перетекает, а не подменяется кадром. */
+.drive-tint {
+  transition: background-color 420ms var(--ease-soft);
+}
+
+/* Палец толще курсора. Мелкая ссылка остаётся мелкой на вид, а нажимается
+   с высоты 44 px: цель растягивается вертикальными полями, которые тут же
+   съедаются отрицательным внешним полем — строка не разъезжается.
+   Только на узком экране: на десктопе невидимая зона мешала бы соседям. */
+@media (max-width: 1023px) {
+  .tap {
+    padding-block: 10px;
+    margin-block: -10px;
+  }
+}
+
+/* ——— Микровзаимодействия ———
+   Общее правило: линия прочерчивается, а не проявляется. Появление через
+   opacity выглядит дёшево, потому что так делает любая библиотека; ход
+   штриха слева направо читается как жест, сделанный руками. */
+
+/* Подчёркивание ссылки: приходит слева, уходит вправо */
+.draw-line {
+  position: relative;
+}
+
+.draw-line::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -3px 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 300ms var(--ease-soft);
+}
+
+.draw-line:hover::after,
+.draw-line:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Поле ввода: на фокусе волосок дорисовывается поверх серого */
+.field {
+  position: relative;
+}
+
+.field::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: var(--color-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 320ms var(--ease-soft);
+}
+
+.field:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* Чипс предмета: заливка наезжает слева, а не мигает целиком */
+.chip {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 300ms var(--ease-soft);
+}
+
+.chip[aria-pressed="true"]::before,
+.chip[aria-checked="true"]::before {
+  transform: scaleX(1);
+}
+
+/* Свотч: кольцо растёт из края, а не включается */
+.swatch {
+  box-shadow: 0 0 0 0 var(--color-paper), 0 0 0 0 var(--color-ink);
+  transition:
+    box-shadow 240ms var(--ease-soft),
+    transform 240ms var(--ease-soft);
+}
+
+.swatch:hover {
+  transform: translateY(-2px);
+}
+
+.swatch[aria-pressed="true"],
+.swatch[aria-checked="true"] {
+  box-shadow:
+    0 0 0 3px var(--color-paper),
+    0 0 0 4px var(--color-ink);
+}
+
+/* Полоса выбора цвета: семь полей анодирования жёсткими стопами, ползунок
+   в цвет выбранного. Плавного градиента здесь быть не может — промежуточных
+   оттенков у товара не существует, и обещать их нельзя. */
+.color-strip {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 46px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  outline-offset: 4px;
+}
+
+.color-strip::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  background: var(--pick);
+  box-shadow:
+    0 0 0 3px var(--color-paper),
+    0 0 0 4px var(--color-ink);
+  cursor: grab;
+  transition: transform 240ms var(--ease-soft);
+}
+
+.color-strip::-webkit-slider-thumb:active {
+  transform: scale(1.08);
+  cursor: grabbing;
+}
+
+.color-strip::-moz-range-thumb {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--pick);
+  box-shadow:
+    0 0 0 3px var(--color-paper),
+    0 0 0 4px var(--color-ink);
+  cursor: grab;
+}
+
+/* Гравировка: Caveat вместо Segoe Print, у которого нет веб-лицензии. */
+.engraving {
+  font-family: var(--font-hand);
+  font-weight: 700;
+}
+
+/* Печать накладной: на бумаге не нужны ни шапка, ни подвал, ни кнопки. */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Проявление по прокрутке на бумаге не работает: у принтера прокрутки
+     нет, и блок, до которого не долистали, ушёл бы на лист пустым. */
+  main section > .shell {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .invoice {
+    border: none;
+    padding: 0;
+    break-inside: avoid;
+  }
+}

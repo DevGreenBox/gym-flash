@@ -1,0 +1,21 @@
+# сборка и зависимости
+/node_modules
+/.next
+/out
+next-env.d.ts
+*.tsbuildinfo
+
+# входящие материалы и исходники — вне git
+/inbox/*
+!/inbox/.gitkeep
+/assets/*
+!/assets/.gitkeep
+
+# env
+.env*
+!.env.example
+
+# claude
+.claude/settings.local.json
+
+.DS_Store
