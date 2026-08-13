@@ -45,8 +45,16 @@ export function Directions() {
     const card = el.firstElementChild as HTMLElement | null;
     const by = card ? card.offsetWidth + 16 : el.clientWidth;
     const max = el.scrollWidth - el.clientWidth;
-    const next = el.scrollLeft + by * dir;
-    el.scrollTo({ left: next > max + 4 ? 0 : next, behavior: "smooth" });
+    const at = el.scrollLeft;
+    // Шаг равен карточке, а последний остаток пути короче — поэтому
+    // перелёт упирается в конец ленты, а не считается её концом:
+    // иначе последняя карточка недостижима. К началу возвращаемся,
+    // только когда уже стоим в конце — это круг автопрокрутки.
+    const next =
+      dir === 1 && at >= max - 4
+        ? 0
+        : Math.min(Math.max(at + by * dir, 0), max);
+    el.scrollTo({ left: next, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
