@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 
 import { ArrowRight } from "@/components/icons";
@@ -17,7 +17,53 @@ import { ArrowRight } from "@/components/icons";
  * в `globals.css`: «Сохрани момент» — учёба, «Музыка твоей победы» —
  * гимнастика, «Подари впечатления» — подарок.
  */
-const HERO = ["/photo/hero-1.jpg", "/photo/hero-2.jpg", "/photo/hero-3.jpg"];
+const HERO = ["hero-1", "hero-2", "hero-3"];
+
+/**
+ * Телефону достаётся свой кадр, а не тот же самый.
+ *
+ * Все три сцены сняты широко: предмет по краям, середина пустая. В окне
+ * телефона широкий кадр обрезался ровно до середины — до пустой стены,
+ * растянутой в два с половиной раза, и первый экран выглядел грязным.
+ * Вертикальные кадры вырезаны по стороне с предметом (`prepare-hero.py`),
+ * и телефон показывает книги, обруч и коробку, а не стену.
+ *
+ * `<picture>` вместо двух картинок с переключением по классу: браузер
+ * скачивает только тот кадр, который покажет.
+ */
+function Frame({ name, priority }: { name: string; priority: boolean }) {
+  const common = { alt: "", sizes: "100vw", priority };
+  const {
+    props: { srcSet: wide },
+  } = getImageProps({
+    ...common,
+    src: `/photo/${name}.jpg`,
+    width: 2400,
+    height: 1351,
+  });
+  const {
+    props: { srcSet: tall, ...rest },
+  } = getImageProps({
+    ...common,
+    src: `/photo/${name}-tall.jpg`,
+    width: 1356,
+    height: 1882,
+  });
+
+  return (
+    <picture>
+      <source media="(min-width: 768px)" srcSet={wide} />
+      <source srcSet={tall} />
+      {/* разметку тега даёт getImageProps — оптимизация и srcset те же,
+          что у <Image>, просто кадра два и выбирает между ними <picture> */}
+      <img
+        {...rest}
+        alt=""
+        className="hero-photo absolute inset-0 size-full object-cover object-[center_38%]"
+      />
+    </picture>
+  );
+}
 
 export function Hero() {
   return (
@@ -25,28 +71,16 @@ export function Hero() {
       {/* Кадр на каждое обещание: фон меняется вместе со строкой.
           Замерено под завесой: самая тёмная точка под заголовком даёт
           8,9 : 1 на первом кадре, 9,0 на втором и 9,2 на третьем. */}
-      {HERO.map((src, i) => (
-        <span key={i} aria-hidden className="hero-frame absolute inset-0 -z-20">
-          <Image
-            src={src}
-            alt=""
-            fill
-            priority={i === 0}
-            sizes="100vw"
-            className="hero-photo object-cover object-[center_38%]"
-          />
+      {HERO.map((name, i) => (
+        <span key={name} aria-hidden className="hero-frame absolute inset-0 -z-20">
+          <Frame name={name} priority={i === 0} />
         </span>
       ))}
 
-      {/* завеса: молочный к центру и вниз, чтобы текст читался на любом кадре */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(76% 82% at 50% 50%, color-mix(in oklab, var(--color-paper) 68%, transparent), color-mix(in oklab, var(--color-paper) 22%, transparent) 74%), linear-gradient(to bottom, transparent 62%, var(--color-paper))",
-        }}
-      />
+      {/* завеса: молочный к центру и вниз, чтобы текст читался на любом
+          кадре. Сила задана в стилях: на телефоне она своя — там кадр
+          вырезан по предмету и под текстом стоит не пустая стена */}
+      <div aria-hidden className="hero-veil absolute inset-0 -z-10" />
 
       {/* Текст стоит ровно посередине кадра — и по ширине, и по высоте.
           Поле фотографии под кнопкой работает межблочным отступом:

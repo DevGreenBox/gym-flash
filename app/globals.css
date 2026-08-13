@@ -249,6 +249,34 @@ html {
   opacity: 0;
 }
 
+/* Завеса под текстом первого экрана: молочное пятно к центру и заливка
+   к низу, чтобы фотография переходила в бумагу без шва. */
+.hero-veil {
+  background:
+    radial-gradient(
+      76% 82% at 50% 50%,
+      color-mix(in oklab, var(--color-paper) 68%, transparent),
+      color-mix(in oklab, var(--color-paper) 22%, transparent) 74%
+    ),
+    linear-gradient(to bottom, transparent 62%, var(--color-paper));
+}
+
+/* На телефоне завеса плотнее. Широкий кадр там обрезался до пустой
+   середины, и текст лежал фактически на белом; теперь под ним свой
+   вертикальный кадр с предметом — на кадре гимнастики обруч проходил
+   ровно под подзаголовком и ронял его до 3,7 : 1 при норме 4,5. */
+@media (max-width: 767px) {
+  .hero-veil {
+    background:
+      radial-gradient(
+        92% 62% at 50% 42%,
+        color-mix(in oklab, var(--color-paper) 82%, transparent),
+        color-mix(in oklab, var(--color-paper) 30%, transparent) 78%
+      ),
+      linear-gradient(to bottom, transparent 62%, var(--color-paper));
+  }
+}
+
 /* Цикл 18 с, по 6 с на обещание: 4,8 с строка стоит и 1,2 с идёт смена.
    Кадры перекрещиваются — фотографии можно растворять друг в друге.
    Строки НЕ перекрещиваются: две длинные надписи в полупрозрачности
