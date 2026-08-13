@@ -113,7 +113,11 @@ export function Directions() {
           {CATEGORIES.map((c) => (
             <li
               key={c.href}
-              className="w-[min(78vw,340px)] shrink-0 snap-start lg:w-[calc((100%-2rem)/3)]"
+              /* Последняя карточка привязывается концом, а не началом:
+                 её начало лежит дальше, чем лента вообще может доехать,
+                 и при `mandatory` движок отбрасывал ленту на предыдущую
+                 точку — до третьей карточки было не долистать. */
+              className="w-[min(78vw,340px)] shrink-0 snap-start last:snap-end lg:w-[calc((100%-2rem)/3)]"
             >
               <Link
                 href={c.href}

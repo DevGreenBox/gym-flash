@@ -69,7 +69,10 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <a
           href="#main"
-          className="sr-only rounded-pill bg-ink px-5 py-3 text-[0.875rem] text-paper focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-70"
+          /* поля — только в фокусе: рядом с `sr-only` они раздували
+             спрятанную ссылку до 41×25 и она перехватывала нажатие
+             в левом верхнем углу, поверх логотипа */
+          className="sr-only rounded-pill bg-ink text-[0.875rem] text-paper focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-70 focus:px-5 focus:py-3"
         >
           Перейти к содержимому
         </a>

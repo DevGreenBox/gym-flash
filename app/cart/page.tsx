@@ -95,7 +95,11 @@ export default function CartPage() {
 
   return (
     <Shell title="Корзина" subtitle={`${count} ${plural(count)} в заявке`}>
-      <div className="grid12">
+      {/* Сетка здесь включается с той же ширины, с какой расставлены
+          колонки. С `grid12` двенадцать колонок появлялись с 768, а
+          `lg:col-span-*` — только с 1024: между ними список и форма
+          получали по одной колонке из двенадцати и налезали друг на друга. */}
+      <div className="grid12-lg">
         <ul className="lg:col-span-7">
           {items.map((item) => (
             <CartRow key={item.id} item={item} />
@@ -105,14 +109,16 @@ export default function CartPage() {
             <button
               type="button"
               onClick={clearCart}
-              className="cursor-pointer text-[0.8125rem] text-ink/65 transition-colors duration-150 hover:text-ink"
+              className="tap cursor-pointer text-[0.8125rem] text-ink/65 transition-colors duration-150 hover:text-ink"
             >
               Очистить корзину
             </button>
           </li>
         </ul>
 
-        <div className="lg:col-span-5">
+        {/* пока колонок нет, форма идёт под списком — и отбивается от него
+            сама: межколонник в потоке блоков не работает */}
+        <div className="max-lg:mt-12 lg:col-span-5">
           <form
             className="space-y-7 rounded-card border border-hairline p-[clamp(24px,3vw,40px)]"
             onSubmit={(e) => {
@@ -231,7 +237,9 @@ function CartRow({ item }: { item: CartItem }) {
           </p>
         )}
 
-        <p className="mt-2 flex flex-wrap items-baseline gap-x-3 text-[0.8125rem] text-ink/70">
+        {/* на телефоне кнопка съезжает под состав строкой ниже: без
+            вертикального шага она прилипала к нему вплотную */}
+        <p className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-2 text-[0.8125rem] text-ink/70">
           <span>
             {color.name}
             {` · ${apparatus.toLowerCase()}`}
@@ -240,7 +248,7 @@ function CartRow({ item }: { item: CartItem }) {
           <button
             type="button"
             onClick={() => setEdit((v) => !v)}
-            className="draw-line cursor-pointer"
+            className="tap draw-line cursor-pointer"
           >
             {edit ? "Готово" : "Изменить надпись"}
           </button>

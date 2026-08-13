@@ -73,7 +73,7 @@ const STEPS = [
  * повторяет `gap` ленты: 8 px до 1024 и 12 px после.
  */
 const TILE =
-  "shrink-0 snap-start w-[calc((100%-24px)/4)] lg:w-[calc((100%-36px)/4)] xl:w-[calc((100%-48px)/5)]";
+  "shrink-0 snap-start last:snap-end w-[calc((100%-24px)/4)] lg:w-[calc((100%-36px)/4)] xl:w-[calc((100%-48px)/5)]";
 
 /**
  * Семь полей анодирования жёсткими стопами — промежуточных цветов нет,
@@ -249,18 +249,22 @@ export function Constructor({
         </button>
       </div>
 
+      {/* та же причина, что у строки ниже: расширенная зона ссылки
+          наезжала на кнопки счётчика над ней */}
       <Link
         href="/cart"
-        className="draw-line tap mt-5 inline-flex items-center gap-2 text-[0.875rem]"
+        className="draw-line tap mt-5 inline-flex items-center gap-2 text-[0.875rem] max-lg:mt-8"
       >
         <Bag className="size-4" />
         {inCart > 0 ? `В корзине: ${inCart}` : "Перейти в корзину"}
         <ArrowRight className="size-4" />
       </Link>
 
+      {/* шаг крупнее ссылки выше: у обеих на телефоне расширенная зона
+          нажатия, и при обычном шаге между зонами оставалось 4 px */}
       <p
         aria-live="polite"
-        className="mt-5 flex flex-wrap items-baseline gap-x-3 text-[0.8125rem] text-ink/70"
+        className="mt-5 flex flex-wrap items-baseline gap-x-3 text-[0.8125rem] text-ink/70 max-lg:mt-8"
       >
         {added ? (
           <span>{added}</span>
@@ -497,9 +501,12 @@ function DriveItem({
   // конструктор — один блок, а не заголовок и отдельная от него форма
   return (
     <div className="mt-[clamp(28px,3.5vw,52px)]">
-      <div className="mb-6 flex items-baseline justify-between gap-4">
+      {/* На телефоне строка не помещается целиком: номер позиции ломался
+          на три этажа, а «Убрать» выезжало за поле набора. Действия
+          переносятся под название — переносим строку, а не режем слова. */}
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-3">
         <p className="flex items-baseline gap-3">
-          <span className="text-[0.6875rem] font-semibold tracking-[0.14em] text-ink/65 tabular-nums">
+          <span className="text-[0.6875rem] font-semibold tracking-[0.14em] whitespace-nowrap text-ink/65 tabular-nums">
             {String(n + 1).padStart(2, "0")}
             <span className="font-normal">
               {" "}
@@ -684,7 +691,7 @@ function DriveItem({
               className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
                 step === 0
                   ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 ${
+                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
                       step > 0 ? "-translate-x-3" : "translate-x-3"
                     }`
               }`}
@@ -736,7 +743,7 @@ function DriveItem({
               className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
                 step === 1
                   ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 ${
+                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
                       step > 1 ? "-translate-x-3" : "translate-x-3"
                     }`
               }`}
@@ -789,7 +796,7 @@ function DriveItem({
               className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
                 step === 2
                   ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 ${
+                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
                       step > 2 ? "-translate-x-3" : "translate-x-3"
                     }`
               }`}
@@ -855,7 +862,7 @@ function DriveItem({
               className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
                 step === 3
                   ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 ${
+                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
                       step > 3 ? "-translate-x-3" : "translate-x-3"
                     }`
               }`}
