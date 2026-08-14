@@ -112,11 +112,18 @@ function readableOnPaper(hex: string) {
 export function Constructor({
   heading = "Соберите комплект на сезон",
   headingAs: Heading = "h2",
+  priority = false,
 }: {
   /** «комплект на сезон» — про гимнастику; в учёбе и подарке заголовок свой */
   heading?: string;
   /** h1 — когда конструктор и есть содержание страницы */
   headingAs?: "h1" | "h2";
+  /**
+   * Ставится там, где конструктор — первое изображение страницы. Один
+   * приоритет на страницу: два предзагруженных изображения соревнуются
+   * друг с другом, и выигрывает тишина.
+   */
+  priority?: boolean;
 } = {}) {
   const { items, trash } = useEngraving();
   const [added, setAdded] = useState<null | string>(null);
@@ -316,6 +323,7 @@ export function Constructor({
 
         <DriveItem
           key={active.id}
+          priority={priority}
           item={active}
           n={items.findIndex((it) => it.id === active.id)}
           items={items}
@@ -371,6 +379,7 @@ function DriveItem({
   onBuildSet,
   canBuildSet,
   order,
+  priority,
 }: {
   item: Item;
   n: number;
@@ -384,6 +393,8 @@ function DriveItem({
   canBuildSet: boolean;
   /** нижняя часть заказа: количество, корзина, примечание */
   order: React.ReactNode;
+  /** превью — первое изображение страницы, грузить его вперёд остальных */
+  priority: boolean;
 }) {
   const total = items.length;
   const [focused, setFocused] = useState<number | null>(null);
@@ -565,6 +576,7 @@ function DriveItem({
                 треть экрана и накрыла бы то, что человек в этот момент правит */}
             <div className="relative w-full max-w-[286px] lg:max-w-none">
               <FlashDrive
+                priority={priority}
                 color={color.hex}
                 apparatusId={item.apparatusId}
                 lines={shown}

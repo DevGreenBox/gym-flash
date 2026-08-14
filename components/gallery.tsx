@@ -97,6 +97,10 @@ export function Gallery() {
                   }}
                 >
                   <FlashDrive
+                    /* первая карточка раскладки — самый крупный элемент
+                       страницы; остальные пятнадцать грузятся обычной
+                       очередью, иначе они перебивают её же */
+                    priority={i === 0}
                     color={color.hex}
                     apparatusId={s.apparatusId}
                     lines={s.lines}

@@ -128,14 +128,20 @@ h2 {
   color: #fff;
 }
 
-/* Поля ввода в фокусной рамке не нуждаются: у них дочерчивается чернильный
-   волосок (`.field`), а рамка вокруг подчёркнутого поля читается как ошибка. */
-:where(a, button, select, [tabindex]):focus-visible {
+/* Поле в обёртке `.field` в рамке не нуждается: у него дочерчивается
+   чернильный волосок, а рамка вокруг подчёркнутого поля читается как
+   ошибка. Всем остальным рамка нужна — счётчик количества стоит внутри
+   пилюли, волоска у него нет, и с клавиатуры он был невидим. */
+:where(a, button, select, input, textarea, [tabindex]):focus-visible {
   /* не `--brand`: свой оттенок можно выбрать почти белым, и рамка фокуса
      на молочной бумаге исчезла бы. `--brand-ui` затемнён до 3 : 1. */
   outline: 2px solid var(--brand-ui, var(--brand));
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+.field :is(input, textarea):focus-visible {
+  outline: none;
 }
 
 /* Цвет выбранной флешки живёт на :root — его видят и шапка, и подвал.
@@ -483,11 +489,13 @@ html {
   position: relative;
 }
 
+/* Волосок фокуса вдвое толще волоска покоя: разница в цвете на одном
+   пикселе слишком тихая для единственного указателя фокуса в поле. */
 .field::after {
   content: "";
   position: absolute;
-  inset: auto 0 0 0;
-  height: 1px;
+  inset: auto 0 -1px 0;
+  height: 2px;
   background: var(--color-ink);
   transform: scaleX(0);
   transform-origin: left;

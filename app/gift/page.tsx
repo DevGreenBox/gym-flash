@@ -3,13 +3,11 @@ import type { Metadata } from "next";
 import { Constructor } from "@/components/constructor";
 import { SectionPage } from "@/components/section-page";
 import { SECTIONS } from "@/lib/content";
+import { sectionMeta } from "@/lib/meta";
 
 const section = SECTIONS.gift;
 
-export const metadata: Metadata = {
-  title: section.title,
-  openGraph: { title: section.title },
-};
+export const metadata: Metadata = sectionMeta(section);
 
 export default function Page() {
   return (

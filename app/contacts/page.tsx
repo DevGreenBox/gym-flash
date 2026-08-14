@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 
 import { AskForm } from "@/components/ask-form";
 import { Cta } from "@/components/cta";
+import { pageMeta } from "@/lib/meta";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Контакты" };
+export const metadata: Metadata = pageMeta({
+  title: "Контакты",
+  description: `${site.legal}, ${site.city}. Телефон, почта и форма вопроса о гравировке, сроках и доставке.`,
+  path: "/contacts",
+});
 
 export default function Page() {
   return (

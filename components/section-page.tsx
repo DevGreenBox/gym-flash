@@ -89,9 +89,13 @@ export function SectionPage({
               >
                 {section.preview === "set" ? (
                   <ul className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-                    {APPARATUS.map((a) => (
+                    {APPARATUS.map((a, i) => (
                       <li key={a.id}>
                         <FlashDrive
+                          /* первая флешка в наборе — самый крупный элемент
+                             страницы, браузер считает по ней момент
+                             отрисовки; остальные шесть подождут очереди */
+                          priority={i === 0}
                           color={colorById(DEFAULT_COLOR_FOR[a.id]).hex}
                           apparatusId={a.id}
                           lines={
@@ -105,6 +109,9 @@ export function SectionPage({
                   </ul>
                 ) : (
                   <FlashDrive
+                    /* единственная фотография разворота — она же и есть
+                       то, по чему браузер меряет отрисовку страницы */
+                    priority
                     color={colorById(section.preview.colorId).hex}
                     apparatusId={section.preview.apparatusId}
                     lines={section.preview.lines}

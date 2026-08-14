@@ -31,12 +31,19 @@ const HERO = ["hero-1", "hero-2", "hero-3"];
  * `<picture>` вместо двух картинок с переключением по классу: браузер
  * скачивает только тот кадр, который покажет.
  */
+/* Телефон получает кадр чуть скромнее окна: 1080 px вместо 1200 при
+   тройной плотности. Меньше брать нельзя — на 830 px браузер растягивает
+   кадр в полтора раза сам, и первый экран снова мутнеет; больше незачем —
+   настоящей детали в вертикальном вырезе всё равно 677 px. */
+const SIZES = { мобильный: "90vw", широкий: "100vw" };
+
 function Frame({ name, priority }: { name: string; priority: boolean }) {
-  const common = { alt: "", sizes: "100vw", priority };
+  const common = { alt: "", priority };
   const {
     props: { srcSet: wide },
   } = getImageProps({
     ...common,
+    sizes: SIZES.широкий,
     src: `/photo/${name}.jpg`,
     width: 2400,
     height: 1351,
@@ -45,6 +52,7 @@ function Frame({ name, priority }: { name: string; priority: boolean }) {
     props: { srcSet: tall, ...rest },
   } = getImageProps({
     ...common,
+    sizes: SIZES.мобильный,
     src: `/photo/${name}-tall.jpg`,
     width: 1356,
     height: 1882,
@@ -52,13 +60,20 @@ function Frame({ name, priority }: { name: string; priority: boolean }) {
 
   return (
     <picture>
-      <source media="(min-width: 768px)" srcSet={wide} />
-      <source srcSet={tall} />
+      {/* `sizes` нужен каждому источнику свой: на <img> он до <source>
+          не достаёт, и браузер молча считает по 100vw — из-за этого
+          телефон тянул кадр вдвое тяжелее нужного */}
+      <source media="(min-width: 768px)" srcSet={wide} sizes={SIZES.широкий} />
+      <source srcSet={tall} sizes={SIZES.мобильный} />
       {/* разметку тега даёт getImageProps — оптимизация и srcset те же,
           что у <Image>, просто кадра два и выбирает между ними <picture> */}
       <img
         {...rest}
         alt=""
+        /* второй и третий кадры нужны на шестой и двенадцатой секунде,
+           поэтому в очереди они уступают: иначе три фотографии тянутся
+           разом и первая — та, что видна сразу, — приходит последней */
+        fetchPriority={priority ? "high" : "low"}
         className="hero-photo absolute inset-0 size-full object-cover object-[center_38%]"
       />
     </picture>

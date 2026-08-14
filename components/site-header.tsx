@@ -24,9 +24,18 @@ export function SiteHeader() {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    // Пока панель открыта, всё остальное на странице выключено: без этого
+    // Tab после последнего пункта уходил на кнопки под панелью — на экране
+    // их не видно, а фокус там. `inert` убирает ветку и из обхода, и из
+    // чтения с экрана, поэтому ловушку фокуса писать не нужно.
+    const behind = [...document.body.children].filter(
+      (el) => el.id !== "site-menu",
+    );
+    behind.forEach((el) => el.setAttribute("inert", ""));
     return () => {
       removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      behind.forEach((el) => el.removeAttribute("inert"));
       burger?.focus();
     };
   }, [open]);

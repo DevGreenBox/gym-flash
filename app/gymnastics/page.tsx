@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 
 import { Constructor } from "@/components/constructor";
 import { SECTIONS } from "@/lib/content";
+import { sectionMeta } from "@/lib/meta";
 
 const section = SECTIONS.gymnastics;
 
-export const metadata: Metadata = {
-  title: section.title,
-  openGraph: { title: section.title },
-};
+export const metadata: Metadata = sectionMeta(section);
 
 /**
  * Раздел — сам конструктор, без вступительного разворота: в шапке он так
@@ -17,5 +15,7 @@ export const metadata: Metadata = {
  * можно одной строкой.
  */
 export default function Page() {
-  return <Constructor headingAs="h1" />;
+  // конструктор здесь — всё содержание страницы, и его превью первое
+  // изображение: без приоритета браузер брал его в общей очереди
+  return <Constructor headingAs="h1" priority />;
 }

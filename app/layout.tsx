@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Caveat, Golos_Text, Prata } from "next/font/google";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -24,6 +24,11 @@ const golos = Golos_Text({
 });
 
 // Подмена Segoe Print Bold: у оригинала нет веб-лицензии.
+// Предзагрузка нужна: рукописным набрана гравировка, а на разделах
+// «Для учёбы» и «Памятный подарок» именно она — самый крупный элемент
+// страницы. Без предзагрузки шрифт приходил последним, надпись
+// перерисовывалась после подмены, и отрисовка страницы засчитывалась
+// на секунду позже (замерено: 3,4 с против 1,6 с на «Для учёбы»).
 const caveat = Caveat({
   subsets: ["cyrillic", "latin"],
   weight: ["700"],
@@ -46,16 +51,44 @@ export const metadata: Metadata = {
   description,
   applicationName: site.name,
   authors: [{ name: site.legal }],
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "ru_RU",
     siteName: site.name,
+    url: "/",
     title,
     description,
   },
   twitter: { card: "summary_large_image", title, description },
   // Сайт ещё не сдан заказчику — в поиск его пускать рано.
   robots: { index: false, follow: false },
+};
+
+/* Цвет строки браузера на телефоне: без него системная полоса остаётся
+   белой или чёрной и обрывает молочную бумагу ровно на кромке экрана. */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf9f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#faf9f7" },
+  ],
+};
+
+/**
+ * Кто мы такие — машиночитаемо. Только то, что заказчик дал: имя, лицо,
+ * город, телефон, почта. Ни рейтингов, ни часов работы, ни цен —
+ * их нам не давали, а размеченная выдумка хуже её отсутствия.
+ */
+const ORGANIZATION = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.name,
+  legalName: site.legal,
+  url: "https://personal-flash.ru",
+  email: site.email,
+  telephone: site.phoneHref.replace("tel:", ""),
+  address: { "@type": "PostalAddress", addressLocality: site.city, addressCountry: "RU" },
+  description,
 };
 
 export default function RootLayout({
@@ -67,6 +100,10 @@ export default function RootLayout({
       className={`${golos.variable} ${prata.variable} ${caveat.variable}`}
     >
       <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION) }}
+        />
         <a
           href="#main"
           /* поля — только в фокусе: рядом с `sr-only` они раздували

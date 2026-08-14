@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 
 import { SectionPage } from "@/components/section-page";
 import { SECTIONS } from "@/lib/content";
+import { sectionMeta } from "@/lib/meta";
 import { SPEC, mm } from "@/lib/site";
 
 const section = SECTIONS.prices;
 
-export const metadata: Metadata = {
-  title: section.title,
-  openGraph: { title: section.title },
-};
+export const metadata: Metadata = sectionMeta(section);
 
 /** Что известно точно — снято с чертежа заказчика. Остальное уточняется. */
 const known = [
