@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CopyLine } from "@/components/copy-line";
 import { Logo } from "@/components/logo";
 import { Messengers } from "@/components/messengers";
 import { NAV, site } from "@/lib/site";
@@ -27,19 +28,29 @@ export function SiteFooter() {
           <p className="text-[0.6875rem] font-semibold tracking-[0.18em] text-ink/65 uppercase">
             Связаться с нами
           </p>
-          <a
-            href={site.phoneHref}
-            className="draw-line mt-5 inline-block font-display text-[clamp(1.5rem,2.6vw,2.1rem)] leading-none tracking-[-0.02em]"
-          >
-            {site.phone}
-          </a>
-          <br />
-          <a
-            href={`mailto:${site.email}`}
-            className="draw-line mt-5 inline-block text-[1.0625rem]"
-          >
-            {site.email}
-          </a>
+          {/* Номер и почта — ссылка и копирование рядом. Ссылка нужна
+              телефону, копирование — компьютеру: там `tel:` и `mailto:`
+              часто ни к чему не привязаны, и нажатие внешне не делает
+              ничего. Кнопка кладёт значение в буфер и говорит об этом. */}
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            <a
+              href={site.phoneHref}
+              className="draw-line font-display text-[clamp(1.5rem,2.6vw,2.1rem)] leading-none tracking-[-0.02em]"
+            >
+              {site.phone}
+            </a>
+            <CopyLine value={site.phone} label="номер телефона" />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            <a
+              href={`mailto:${site.email}`}
+              className="draw-line text-[1.0625rem]"
+            >
+              {site.email}
+            </a>
+            <CopyLine value={site.email} label="адрес почты" />
+          </div>
           <div className="mt-7 flex flex-wrap gap-3">
             <a
               href={site.phoneHref}
