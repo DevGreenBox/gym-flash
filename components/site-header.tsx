@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Bag, Cross } from "@/components/icons";
 import { Logo } from "@/components/logo";
+import { Messengers } from "@/components/messengers";
 import { totalQty, useCart } from "@/lib/cart";
 import { HEADER_NAV, NAV, site } from "@/lib/site";
 
@@ -76,6 +77,11 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {/* мессенджеры стоят рядом с корзиной, но не на телефоне:
+                в строку 390 px логотип, два значка, корзина и бургер
+                не помещаются — на узком экране они ждут в меню */}
+            <Messengers compact className="mr-1 hidden md:flex" />
+
             <Link
               href="/cart"
               className="inline-flex h-10 items-center gap-2 rounded-pill bg-ink pr-4 pl-3.5 text-[0.8125rem] font-medium text-paper transition-transform duration-150 hover:-translate-y-px"
@@ -114,9 +120,14 @@ export function SiteHeader() {
           role="dialog"
           aria-modal="true"
           aria-label="Разделы сайта"
-          className="fixed inset-0 z-60 bg-paper"
+          /* Высота своя и в динамических единицах: `inset-0` на айфоне
+             считается по большому окну, и низ панели уходил под панель
+             браузера — «Контакты» просто не было видно. Прокрутка
+             появляется только у списка, поэтому шапка панели с крестиком
+             остаётся на месте: закрыть меню можно с любой прокрутки. */
+          className="fixed inset-x-0 top-0 z-60 flex h-[100dvh] flex-col bg-paper"
         >
-          <div className="shell flex h-16 items-center justify-between">
+          <div className="shell flex h-16 shrink-0 items-center justify-between">
             <Logo className="text-[1.0625rem]" />
             <button
               ref={closeRef}
@@ -129,7 +140,9 @@ export function SiteHeader() {
             </button>
           </div>
 
-          <nav className="shell mt-8 overflow-y-auto pb-16">
+          {/* `min-h-0` обязателен: без него колонка отдаёт списку всю его
+              высоту, прокрутке не остаётся хода и `overflow-y` бездействует */}
+          <nav className="shell mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-12">
             <ul className="grid gap-1 md:grid-cols-2 md:gap-x-16">
               {NAV.map((item) => {
                 const active = pathname === item.href;
@@ -161,6 +174,11 @@ export function SiteHeader() {
               </a>
               <span>{site.city}</span>
             </div>
+
+            <p className="mt-8 text-[0.6875rem] font-semibold tracking-[0.18em] text-ink/65 uppercase">
+              Связаться с нами
+            </p>
+            <Messengers className="mt-3" />
           </nav>
         </div>
       ) : null}

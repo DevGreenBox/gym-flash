@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/logo";
+import { Messengers } from "@/components/messengers";
 import { NAV, site } from "@/lib/site";
 
 /**
@@ -24,7 +25,7 @@ export function SiteFooter() {
 
         <div className="md:col-span-4">
           <p className="text-[0.6875rem] font-semibold tracking-[0.18em] text-ink/65 uppercase">
-            Связаться
+            Связаться с нами
           </p>
           <a
             href={site.phoneHref}
@@ -53,9 +54,9 @@ export function SiteFooter() {
               Написать письмо
             </a>
           </div>
-          <p className="mt-5 text-[0.75rem] text-ink/65">
-            WhatsApp и Telegram — ссылки уточняются.
-          </p>
+          {/* мессенджеры отдельным рядом под кнопками: ряд свёрстан
+              на своё место, ссылки в него встанут без перевёрстки */}
+          <Messengers className="mt-4" />
         </div>
 
         <nav className="md:col-span-3 md:col-start-10">

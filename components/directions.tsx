@@ -42,19 +42,27 @@ export function Directions() {
   const step = useCallback((dir: 1 | -1) => {
     const el = rail.current;
     if (!el) return;
-    const card = el.firstElementChild as HTMLElement | null;
-    const by = card ? card.offsetWidth + 16 : el.clientWidth;
+    const cards = [...el.children] as HTMLElement[];
+    if (!cards.length) return;
     const max = el.scrollWidth - el.clientWidth;
     const at = el.scrollLeft;
-    // Шаг равен карточке, а последний остаток пути короче — поэтому
-    // перелёт упирается в конец ленты, а не считается её концом:
-    // иначе последняя карточка недостижима. К началу возвращаемся,
-    // только когда уже стоим в конце — это круг автопрокрутки.
-    const next =
-      dir === 1 && at >= max - 4
-        ? 0
-        : Math.min(Math.max(at + by * dir, 0), max);
-    el.scrollTo({ left: next, behavior: "smooth" });
+    /* Шаг считается по самим карточкам, а не по «ширина плюс отступ».
+       Арифметика верна, только пока лента стоит ровно на границе
+       карточки; палец останавливает её где угодно, и следующий шаг
+       промахивался мимо — на телефоне это читалось как «не листает».
+       Последняя остановка упирается в конец ленты: её левый край
+       дальше, чем лента может доехать. */
+    const stops = cards.map((c) =>
+      Math.min(c.offsetLeft - cards[0].offsetLeft, max),
+    );
+    if (dir === 1 && at >= max - 4) {
+      el.scrollTo({ left: 0, behavior: "smooth" }); // круг автопрокрутки
+      return;
+    }
+    // где стоим: ближайшая остановка слева от текущего положения
+    const here = stops.reduce((best, x, i) => (x <= at + 4 ? i : best), 0);
+    const next = Math.min(Math.max(here + dir, 0), stops.length - 1);
+    el.scrollTo({ left: stops[next], behavior: "smooth" });
   }, []);
 
   useEffect(() => {

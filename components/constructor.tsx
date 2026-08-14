@@ -57,12 +57,17 @@ const FIELDS = [
   { label: "Год", hint: FALLBACK[2], max: 4, digits: true },
 ] as const;
 
-/** Настройки идут шагами в этом порядке; подписи же стоят на вкладках. */
+/**
+ * Настройки идут шагами в этом порядке; подписи же стоят на вкладках.
+ * Шаг «Предмет» показывается только там, где предметы есть, — в разделе
+ * художественной гимнастики. Покупателю флешки для учёбы или на подарок
+ * обруч с булавами выбирать незачем, и знак на его флешку не попадает.
+ */
 const STEPS = [
-  { title: "Надпись" },
-  { title: "Шрифт" },
-  { title: "Предмет" },
-  { title: "Оттенок" },
+  { id: "lines", title: "Надпись" },
+  { id: "font", title: "Шрифт" },
+  { id: "apparatus", title: "Предмет" },
+  { id: "color", title: "Оттенок" },
 ];
 
 /**
@@ -113,6 +118,7 @@ export function Constructor({
   heading = "Соберите комплект на сезон",
   headingAs: Heading = "h2",
   priority = false,
+  apparatus: withApparatus = true,
 }: {
   /** «комплект на сезон» — про гимнастику; в учёбе и подарке заголовок свой */
   heading?: string;
@@ -124,6 +130,14 @@ export function Constructor({
    * друг с другом, и выигрывает тишина.
    */
   priority?: boolean;
+  /**
+   * Показывать ли шаг «Предмет». Конструктор на сайте один, а разделы
+   * у него разные: знак вида нужен только художественной гимнастике.
+   * Хранилище при этом не трогаем — набор, собранный в гимнастике,
+   * не должен обнуляться от захода в «Учёбу»; здесь знак просто
+   * не показывается и не уезжает в заявку.
+   */
+  apparatus?: boolean;
 } = {}) {
   const { items, trash } = useEngraving();
   const [added, setAdded] = useState<null | string>(null);
@@ -172,7 +186,9 @@ export function Constructor({
       addToCart({
         colorId: it.colorId,
         customHex: it.customHex,
-        apparatusId: it.apparatusId,
+        // где шага «Предмет» нет, знак не уезжает и в заявку: человек
+        // его не выбирал и на его флешке он не появится
+        apparatusId: withApparatus ? it.apparatusId : null,
         fontId: it.fontId,
         lines: shownLines(it.lines),
         qty,
@@ -332,8 +348,11 @@ export function Constructor({
           onDuplicate={() => setPickedId(duplicateItem(active.id))}
           onRemove={() => drop(active.id)}
           onRemoveItem={drop}
+          withApparatus={withApparatus}
           onBuildSet={addSet}
-          canBuildSet={!!active.lines[0].trim()}
+          /* комплект на сезон — это флешка на каждый предмет; там,
+             где предметов нет, кнопке нечего собирать */
+          canBuildSet={withApparatus && !!active.lines[0].trim()}
           order={order}
         />
 
@@ -380,6 +399,7 @@ function DriveItem({
   canBuildSet,
   order,
   priority,
+  withApparatus,
 }: {
   item: Item;
   n: number;
@@ -395,10 +415,40 @@ function DriveItem({
   order: React.ReactNode;
   /** превью — первое изображение страницы, грузить его вперёд остальных */
   priority: boolean;
+  /** показывать ли шаг «Предмет» и знак вида на самой флешке */
+  withApparatus: boolean;
 }) {
   const total = items.length;
   const [focused, setFocused] = useState<number | null>(null);
   const [step, setStep] = useState(0);
+
+  // Список шагов у раздела свой, поэтому шаг адресуется именем, а не
+  // номером: с выключенным «Предметом» номер 2 означал бы уже «Оттенок».
+  const steps = withApparatus
+    ? STEPS
+    : STEPS.filter((s) => s.id !== "apparatus");
+  const stepAt = (id: string) => steps.findIndex((s) => s.id === id);
+
+  /** Общая обвязка панели шага: связь с вкладкой, видимость и сторона входа. */
+  const pane = (id: string) => {
+    const i = stepAt(id);
+    const on = step === i;
+    return {
+      role: "tabpanel" as const,
+      id: `${paneId}-${id}`,
+      "aria-labelledby": `${tabId}-${id}`,
+      className: `col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
+        on
+          ? "translate-x-0 opacity-100"
+          : `pointer-events-none invisible opacity-0 max-lg:hidden ${
+              step > i ? "-translate-x-3" : "translate-x-3"
+            }`
+      }`,
+    };
+  };
+
+  /** Знак вида: там, где шага «Предмет» нет, флешка идёт без него. */
+  const apparatusId = withApparatus ? item.apparatusId : null;
   const fieldRefs = useRef<(HTMLInputElement | null)[]>([]);
   const apparatusRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -438,8 +488,8 @@ function DriveItem({
       e.key === "Home"
         ? 0
         : e.key === "End"
-          ? STEPS.length - 1
-          : (step + move + STEPS.length) % STEPS.length;
+          ? steps.length - 1
+          : (step + move + steps.length) % steps.length;
     setStep(next);
     tabsRef.current
       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
@@ -450,7 +500,7 @@ function DriveItem({
   const font = fontById(item.fontId);
   const shown = shownLines(item.lines);
   const colorIndex = COLORS.findIndex((c) => c.id === item.colorId);
-  const apparatus = apparatusLabel(item.apparatusId);
+  const apparatus = apparatusLabel(apparatusId);
 
   /**
    * Группа предметов объявлена радиогруппой — значит и вести себя должна
@@ -525,7 +575,8 @@ function DriveItem({
             </span>
           </span>
           <span className="text-[1.0625rem] font-medium">
-            {apparatus} · {color.name}
+            {withApparatus ? `${apparatus} · ` : ""}
+            {color.name}
           </span>
         </p>
         <div className="flex items-center gap-5">
@@ -578,7 +629,7 @@ function DriveItem({
               <FlashDrive
                 priority={priority}
                 color={color.hex}
-                apparatusId={item.apparatusId}
+                apparatusId={apparatusId}
                 lines={shown}
                 fontId={item.fontId}
                 chain={false}
@@ -616,7 +667,7 @@ function DriveItem({
                       ради того же выбора незачем — они остаются для
                       прямого попадания и для клавиатуры. Без знака зоны
                       нет: нажимать не на что. */}
-                  {item.apparatusId ? (
+                  {apparatusId ? (
                     <button
                       type="button"
                       onClick={cycleApparatus}
@@ -636,6 +687,7 @@ function DriveItem({
               onPick={onPick}
               onAdd={onAdd}
               onRemove={onRemoveItem}
+              withApparatus={withApparatus}
             />
           </div>
 
@@ -670,14 +722,14 @@ function DriveItem({
                иначе накладываются друг на друга */
             className="flex flex-wrap gap-x-5 gap-y-2 border-b border-hairline pb-4 max-lg:gap-y-6"
           >
-            {STEPS.map((s, i) => (
+            {steps.map((s, i) => (
               <button
-                key={s.title}
+                key={s.id}
                 type="button"
                 role="tab"
-                id={`${tabId}-${i}`}
+                id={`${tabId}-${s.id}`}
                 aria-selected={step === i}
-                aria-controls={`${paneId}-${i}`}
+                aria-controls={`${paneId}-${s.id}`}
                 tabIndex={step === i ? 0 : -1}
                 onClick={() => setStep(i)}
                 className={`tap inline-flex cursor-pointer items-baseline gap-2 text-[0.9375rem] transition-colors duration-300 ${
@@ -696,18 +748,7 @@ function DriveItem({
           </div>
 
           <div className="mt-7 grid">
-            <div
-              role="tabpanel"
-              id={`${paneId}-0`}
-              aria-labelledby={`${tabId}-0`}
-              className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
-                step === 0
-                  ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
-                      step > 0 ? "-translate-x-3" : "translate-x-3"
-                    }`
-              }`}
-            >
+            <div {...pane("lines")}>
               <Step>
                 <div className="space-y-6">
                   {FIELDS.map((f, i) => (
@@ -748,18 +789,7 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            <div
-              role="tabpanel"
-              id={`${paneId}-1`}
-              aria-labelledby={`${tabId}-1`}
-              className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
-                step === 1
-                  ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
-                      step > 1 ? "-translate-x-3" : "translate-x-3"
-                    }`
-              }`}
-            >
+            <div {...pane("font")}>
               <Step note={font.note}>
                 <div
                   role="radiogroup"
@@ -801,18 +831,10 @@ function DriveItem({
                 </p>
               </Step>
             </div>
-            <div
-              role="tabpanel"
-              id={`${paneId}-2`}
-              aria-labelledby={`${tabId}-2`}
-              className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
-                step === 2
-                  ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
-                      step > 2 ? "-translate-x-3" : "translate-x-3"
-                    }`
-              }`}
-            >
+            {/* в разделах без предметов шага нет вовсе: скрытая панель
+                всё равно осталась бы в обходе с клавиатуры */}
+            {withApparatus ? (
+              <div {...pane("apparatus")}>
               <Step note={apparatus}>
                 <div
                   ref={apparatusRef}
@@ -866,19 +888,9 @@ function DriveItem({
                   строки.
                 </p>
               </Step>
-            </div>
-            <div
-              role="tabpanel"
-              id={`${paneId}-3`}
-              aria-labelledby={`${tabId}-3`}
-              className={`col-start-1 row-start-1 transition-[opacity,transform] duration-300 ease-[var(--ease-soft)] ${
-                step === 3
-                  ? "translate-x-0 opacity-100"
-                  : `pointer-events-none invisible opacity-0 max-lg:hidden ${
-                      step > 3 ? "-translate-x-3" : "translate-x-3"
-                    }`
-              }`}
-            >
+              </div>
+            ) : null}
+            <div {...pane("color")}>
               <Step note={`${color.name} · ${color.hex}`}>
                 {/* Полоса вместо кружков: цвет выбирается движением, как в пипетке.
                   Стопы жёсткие — промежуточных оттенков анодирования не бывает. */}
@@ -963,13 +975,13 @@ function DriveItem({
 
           {/* На последнем шаге «Далее» некуда: дальше идут количество
               и корзина, они стоят под всем блоком. */}
-          {step < STEPS.length - 1 ? (
+          {step < steps.length - 1 ? (
             <button
               type="button"
               onClick={() => setStep((s) => s + 1)}
               className="group mt-8 inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-pill border border-ink px-6 text-[0.875rem] font-medium transition-colors duration-300 hover:bg-ink hover:text-paper"
             >
-              Далее: {STEPS[step + 1].title.toLowerCase()}
+              Далее: {steps[step + 1].title.toLowerCase()}
               <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
             </button>
           ) : null}
@@ -995,12 +1007,15 @@ function DriveRail({
   onPick,
   onAdd,
   onRemove,
+  withApparatus,
 }: {
   items: Item[];
   activeId: string;
   onPick: (id: string) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
+  /** знак вида на окнах ленты — там же, где и на самой флешке */
+  withApparatus: boolean;
 }) {
   const rail = useRef<HTMLUListElement>(null);
   const [edge, setEdge] = useState({ start: true, end: true, scrolls: false });
@@ -1092,9 +1107,11 @@ function DriveRail({
                 type="button"
                 onClick={() => onPick(it.id)}
                 aria-current={on}
-                aria-label={`Флешка ${i + 1}: ${apparatusLabel(
-                  it.apparatusId,
-                )}, ${c.name}`}
+                aria-label={
+                  withApparatus
+                    ? `Флешка ${i + 1}: ${apparatusLabel(it.apparatusId)}, ${c.name}`
+                    : `Флешка ${i + 1}: ${c.name}`
+                }
                 /* активное окно — кольцо, как у свотча цвета: на сайте
                    одно выделение на элемент, и это оно */
                 className={`grid w-full cursor-pointer gap-2 rounded-field px-3 pt-4 pb-2.5 transition-shadow duration-240 ease-[var(--ease-soft)] ${
@@ -1108,7 +1125,7 @@ function DriveRail({
               >
                 <FlashDrive
                   color={c.hex}
-                  apparatusId={it.apparatusId}
+                  apparatusId={withApparatus ? it.apparatusId : null}
                   lines={shownLines(it.lines)}
                   fontId={it.fontId}
                   chain={false}
@@ -1120,7 +1137,9 @@ function DriveRail({
                   className={`hidden truncate text-[0.6875rem] lg:block ${on ? "text-ink" : "text-ink/80"}`}
                 >
                   {String(i + 1).padStart(2, "0")}{" "}
-                  {apparatusLabel(it.apparatusId)}
+                  {withApparatus
+                    ? apparatusLabel(it.apparatusId)
+                    : colorById(it.colorId)?.name ?? ""}
                 </span>
               </button>
 

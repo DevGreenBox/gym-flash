@@ -17,7 +17,19 @@ export const site = {
   legal: "ИП Андеев В. А.",
   whatsapp: null, // TODO(client): номер или ссылка на чат
   telegram: null, // TODO(client): ссылка на канал
+  max: null, // TODO(client): ссылка на чат в MAX
 };
+
+/**
+ * Мессенджеры для строки «Связаться с нами». Пока ссылки не пришли,
+ * кнопка показывается неактивной с честной подписью: выдумать адрес
+ * чата нельзя, а убрать кнопку — значит потерять место, которое
+ * заказчик просил под неё оставить.
+ */
+export const MESSENGERS: { id: string; label: string; href: string | null }[] = [
+  { id: "telegram", label: "Telegram", href: site.telegram },
+  { id: "max", label: "MAX", href: site.max },
+];
 
 /**
  * `short` — подпись для строки в шапке: полные названия разделов туда

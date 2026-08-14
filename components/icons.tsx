@@ -205,3 +205,45 @@ export function Bag({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/**
+ * Мессенджеры нарисованы одним росчерком, как остальные знаки сайта,
+ * а не взяты фирменными логотипами: чужой знак ставят по гайдлайну
+ * правообладателя и в его цвете, и в чернильной строке он выглядел бы
+ * наклейкой. Узнаваемость даёт подпись рядом.
+ */
+export function Send({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* бумажный самолётик: корпус и подогнутое крыло */}
+      <path d="M20.5 3.9 2.9 10.6a.5.5 0 0 0 0 .9l4.6 1.8 1.7 5.2a.5.5 0 0 0 .9.1l2.3-3.4 4.6 3.4a.5.5 0 0 0 .8-.3z" />
+      <path d="M20.5 3.9 9.2 13.6l.5 4.9" />
+    </svg>
+  );
+}
+
+export function Chat({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.5 12.2c0 4.2-3.8 7.6-8.5 7.6a9.6 9.6 0 0 1-3-.5l-5 1.6 1.6-4.2a7.2 7.2 0 0 1-1.6-4.5c0-4.2 3.8-7.6 8.5-7.6s8 3.4 8 7.6z" />
+    </svg>
+  );
+}
