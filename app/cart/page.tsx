@@ -7,6 +7,7 @@ import { FlashDrive } from "@/components/flash-drive";
 import { ArrowRight, Cross, Minus, Plus } from "@/components/icons";
 import type { Order } from "@/components/invoice";
 import { Invoice } from "@/components/invoice";
+import { IncomingOrder, ShareOrder } from "@/components/share-order";
 import type { CartItem } from "@/lib/cart";
 import {
   clearCart,
@@ -79,6 +80,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <Shell title="В корзине пусто">
+        <IncomingOrder />
         <p className="max-w-[42ch] text-[1.0625rem] leading-relaxed text-ink/65">
           Соберите флешку в конструкторе.
         </p>
@@ -95,6 +97,7 @@ export default function CartPage() {
 
   return (
     <Shell title="Корзина" subtitle={`${count} ${plural(count)} в заявке`}>
+      <IncomingOrder />
       {/* Сетка здесь включается с той же ширины, с какой расставлены
           колонки. С `grid12` двенадцать колонок появлялись с 768, а
           `lg:col-span-*` — только с 1024: между ними список и форма
@@ -113,6 +116,7 @@ export default function CartPage() {
             >
               Очистить корзину
             </button>
+            <ShareOrder items={items} />
           </li>
         </ul>
 
