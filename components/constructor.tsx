@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { FlashDrive } from "@/components/flash-drive";
+import { IncomingDraft, ShareDraft } from "@/components/share-draft";
 import {
   ApparatusIcon,
   ArrowRight,
@@ -317,6 +318,10 @@ export function Constructor({
         )}
       </p>
 
+      {/* сборку можно передать до того, как что-то заказано: тренер
+          показывает комплект родителям, а корзину они собирают у себя */}
+      <ShareDraft items={items} />
+
       <p className="mt-5 text-[0.75rem] text-ink/65">
         Цена и минимальный заказ — уточняются.
       </p>
@@ -562,6 +567,7 @@ function DriveItem({
   // конструктор — один блок, а не заголовок и отдельная от него форма
   return (
     <div className="mt-[clamp(28px,3.5vw,52px)]">
+      <IncomingDraft />
       {/* На телефоне строка не помещается целиком: номер позиции ломался
           на три этажа, а «Убрать» выезжало за поле набора. Действия
           переносятся под название — переносим строку, а не режем слова. */}

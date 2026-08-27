@@ -114,6 +114,22 @@ export function orderLink(items: CartItem[], origin: string): string | null {
   return url.length > MAX_LINK ? null : url;
 }
 
+/**
+ * Незавершённая сборка — то же самое, но адресом остаётся страница
+ * конструктора, а ключ другой: заказ кладут в корзину, сборку открывают
+ * в работе. Количество у сборки смысла не имеет, ставим единицу.
+ */
+export function draftLink(
+  items: Omit<CartItem, "id" | "qty">[],
+  origin: string,
+  path: string,
+): string | null {
+  if (!items.length) return null;
+  const withQty = items.map((it) => ({ ...it, id: "", qty: 1 }));
+  const url = `${origin}${path}?c=${encodeOrder(withQty)}`;
+  return url.length > MAX_LINK ? null : url;
+}
+
 /* ——— Присланный заказ ———————————————————————————————————————————————
  *
  * Адрес читается один раз за загрузку и тут же вычищается: обновление
@@ -123,16 +139,18 @@ export function orderLink(items: CartItem[], origin: string): string | null {
  * не заставляет React рисовать страницу дважды.
  */
 let incoming: Omit<CartItem, "id">[] | null | undefined;
+let draft: Omit<CartItem, "id">[] | null | undefined;
 let broken = false;
 const listeners = new Set<() => void>();
 
-function readIncoming() {
+/** `z` — готовый заказ в корзину, `c` — незавершённая сборка в конструктор. */
+function readKey(key: "z" | "c") {
   try {
-    const code = new URLSearchParams(location.search).get("z");
+    const code = new URLSearchParams(location.search).get(key);
     if (!code) return null;
     history.replaceState(null, "", location.pathname);
     const order = decodeOrder(code);
-    broken = order === null;
+    if (order === null) broken = true;
     return order;
   } catch {
     return null;
@@ -145,10 +163,27 @@ export function subscribeIncoming(listener: () => void) {
   // React спрашивает раньше, чем подписывается, и значение, положенное
   // молча, осталось бы непоказанным до следующей перерисовки.
   if (incoming === undefined) {
-    incoming = readIncoming();
+    incoming = readKey("z");
     queueMicrotask(() => listeners.forEach((l) => l()));
   }
   return () => listeners.delete(listener);
+}
+
+export function subscribeDraft(listener: () => void) {
+  listeners.add(listener);
+  if (draft === undefined) {
+    draft = readKey("c");
+    queueMicrotask(() => listeners.forEach((l) => l()));
+  }
+  return () => listeners.delete(listener);
+}
+
+export const draftSnapshot = () => draft ?? null;
+
+export function clearDraft() {
+  draft = null;
+  broken = false;
+  listeners.forEach((l) => l());
 }
 
 export const incomingSnapshot = () => incoming ?? null;

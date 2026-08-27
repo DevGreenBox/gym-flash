@@ -257,3 +257,16 @@ export function forgetRemoved() {
 export function resetEngraving() {
   commit([blank()], null);
 }
+
+/**
+ * Открыть сборку, присланную ссылкой. Номера позиций выдаются заново:
+ * они уникальны внутри этого браузера, а не внутри ссылки, и чужие
+ * пересеклись бы с уже существующими.
+ */
+export function replaceItems(items: Omit<Item, "id">[]) {
+  if (!items.length) return;
+  commit(
+    items.map((it) => ({ ...it, id: `d${++seq}` })),
+    null,
+  );
+}
