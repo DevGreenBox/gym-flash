@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Cta } from "@/components/cta";
 import { FlashDrive } from "@/components/flash-drive";
 import { ArrowRight } from "@/components/icons";
-import { Placeholder } from "@/components/placeholder";
+import { Media } from "@/components/media";
 import type { Section } from "@/lib/content";
 import { FALLBACK } from "@/lib/engraving-view";
 import { APPARATUS, DEFAULT_COLOR_FOR, colorById } from "@/lib/site";
@@ -143,10 +143,9 @@ export function SectionPage({
       {section.photo ? (
         <section className="section">
           <div className="shell">
-            <Placeholder
-              label={section.photo}
-              className="aspect-[16/9] overflow-hidden rounded-card"
-            />
+            {/* блок принимает любой снимок и любое короткое видео:
+                пропорция окна задана здесь, подгонять файл не нужно */}
+            <Media media={null} label={section.photo} ratio="16/9" />
           </div>
         </section>
       ) : null}

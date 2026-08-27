@@ -7,14 +7,18 @@ export function Placeholder({
   label,
   corner,
   className,
+  style,
 }: {
   label: string;
   corner?: boolean;
   className?: string;
+  /** пропорция окна приходит отсюда: у блока она своя, а не из класса */
+  style?: React.CSSProperties;
 }) {
   return (
     <div
       // без `relative`: у Tailwind оно перебивает `absolute` из className
+      style={style}
       className={`bg-silver ${corner ? "" : "grid place-items-center"} ${className ?? ""}`}
       role="img"
       aria-label={`Место под фотографию: ${label}`}
