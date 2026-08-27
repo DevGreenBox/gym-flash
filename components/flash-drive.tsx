@@ -1,14 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { apparatusShape } from "@/components/icons";
-import {
-  DriveBody,
-  ПЛАСТИНА_X,
-  ПЛАСТИНА_Y,
-  ХОЛСТ,
-} from "@/components/flash-drive-model";
+import measures from "@/lib/drive-measures.json";
 import { APPARATUS, SPEC, SQUEEZE, fontById } from "@/lib/site";
 
 /**
@@ -153,73 +149,69 @@ export function FlashDrive({
      под ним подпись; пара стоит по центру короба. */
   const ICON_BOX = showLabel ? 6.2 : 8.4;
   const ICON_Y = showLabel ? FIELD_T + 1.5 : MID_Y - ICON_BOX / 2;
+  const m = chain ? measures.full : measures.solo;
+  const src = chain ? "/drive/base.png" : "/drive/base-solo.png";
+  const mask = chain ? "/drive/plate-mask.png" : "/drive/plate-mask-solo.png";
+
+  const plate = {
+    left: `${m.plate.left}%`,
+    top: `${m.plate.top}%`,
+    width: `${m.plate.width}%`,
+    height: `${m.plate.height}%`,
+  };
 
   return (
     <div
       className={`relative isolate ${className ?? ""}`}
-      style={{ aspectRatio: ХОЛСТ.w / ХОЛСТ.h }}
+      style={{ aspectRatio: m.aspect }}
       role="img"
-      aria-label={`Флешка${chain ? " с кольцом" : ""}, гравировка: ${lines
+      aria-label={`Флешка${chain ? " на цепочке" : ""}, гравировка: ${lines
         .filter(Boolean)
         .join(", ")}${label ? `, предмет: ${label}` : ""}`}
     >
-      {/* Фактура металла — единственная картинка в модели. Там, где
-          флешка главное изображение страницы, просим её заранее:
-          внутри SVG приоритет не выставить, а без него браузер
-          добирается до неё последней. */}
+      {/* Маска пластины указана в стилях, поэтому браузер узнаёт о ней
+          последним и на медленном канале красит корпус через секунду
+          после самой флешки. Там, где флешка — главное изображение
+          страницы, просим маску заранее: без этого цветное пятно
+          дорисовывалось так поздно, что отрисовка страницы засчитывалась
+          по нему (замерено 3,5 с против 1,8 с у самой флешки). */}
       {priority ? (
-        <link
-          rel="preload"
-          as="image"
-          href="/drive/plate.png"
-          fetchPriority="high"
-        />
+        <link rel="preload" as="image" href={mask} fetchPriority="high" />
       ) : null}
 
+      <Image
+        src={src}
+        alt=""
+        fill
+        priority={priority}
+        sizes="(max-width: 768px) 90vw, 640px"
+        className={`object-contain ${side === "back" ? "-scale-x-100" : ""}`}
+      />
+
+      {/* цвет корпуса — только по пластине, режимом умножения */}
+      <span
+        aria-hidden
+        className={`drive-tint pointer-events-none absolute inset-0 mix-blend-multiply ${
+          side === "back" ? "-scale-x-100" : ""
+        }`}
+        style={{
+          background: tint(color),
+          maskImage: `url(${mask})`,
+          WebkitMaskImage: `url(${mask})`,
+          maskSize: "100% 100%",
+          WebkitMaskSize: "100% 100%",
+        }}
+      />
+
+      {/* гравировка: координаты в миллиметрах с чертежа */}
       <svg
-        viewBox={`0 0 ${ХОЛСТ.w} ${ХОЛСТ.h}`}
-        className="absolute inset-0 size-full"
+        aria-hidden
+        viewBox={`0 0 ${SPEC.plate} ${SPEC.plateH}`}
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute"
+        style={plate}
       >
-        <defs>
-          {/* Пластина со скруглёнными торцами: на фотографиях они
-              полукруглые, то есть радиус — половина высоты. */}
-          <clipPath id={`${uid}-plate`}>
-            <rect
-              x={ПЛАСТИНА_X}
-              y={ПЛАСТИНА_Y}
-              width={SPEC.plate}
-              height={SPEC.plateH}
-              rx={SPEC.plateH / 2}
-            />
-          </clipPath>
-        </defs>
-
-        <DriveBody uid={uid} chain={chain} />
-
-        {/* Цвет и фактура: анодировка — это цвет под шлифовкой, поэтому
-            снимок металла ложится на заливку умножением, как и раньше.
-            Изменился только силуэт, не способ окраски. */}
-        <g clipPath={`url(#${uid}-plate)`}>
-          <rect
-            x={ПЛАСТИНА_X}
-            y={ПЛАСТИНА_Y}
-            width={SPEC.plate}
-            height={SPEC.plateH}
-            fill={tint(color)}
-          />
-          <image
-            href="/drive/plate.png"
-            x={ПЛАСТИНА_X}
-            y={ПЛАСТИНА_Y}
-            width={SPEC.plate}
-            height={SPEC.plateH}
-            preserveAspectRatio="none"
-            style={{ mixBlendMode: "multiply" }}
-          />
-        </g>
-
-        <g transform={`translate(${ПЛАСТИНА_X} ${ПЛАСТИНА_Y})`}>
-      {/* Блик и притенение — едва заметные. Основной металл даёт сам
+        {/* Блик и притенение — едва заметные. Основной металл даёт сам
             снимок под цветом; сильный градиент поверх делал из корпуса
             глянцевый пластик, поэтому здесь только намёк на свет
             сверху и уход в тень книзу. */}
@@ -306,9 +298,8 @@ export function FlashDrive({
         ) : null}
 
         {side === "front" && apparatusId && showLabel && label ? (
-            <LabelPlate label={label} font={font} />
-          ) : null}
-        </g>
+          <LabelPlate label={label} font={font} />
+        ) : null}
       </svg>
     </div>
   );

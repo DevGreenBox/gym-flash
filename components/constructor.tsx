@@ -15,7 +15,7 @@ import {
   Plus,
 } from "@/components/icons";
 import { addToCart, totalQty, useCart } from "@/lib/cart";
-import { ПЛАСТИНА_ДОЛИ } from "@/components/flash-drive-model";
+import measures from "@/lib/drive-measures.json";
 import type { Item } from "@/lib/engraving";
 import {
   addItem,
@@ -645,10 +645,10 @@ function DriveItem({
               <div
                 className="absolute"
                 style={{
-                  left: `${ПЛАСТИНА_ДОЛИ.left}%`,
-                  top: `${ПЛАСТИНА_ДОЛИ.top}%`,
-                  width: `${ПЛАСТИНА_ДОЛИ.width}%`,
-                  height: `${ПЛАСТИНА_ДОЛИ.height}%`,
+                  left: `${measures.solo.plate.left}%`,
+                  top: `${measures.solo.plate.top}%`,
+                  width: `${measures.solo.plate.width}%`,
+                  height: `${measures.solo.plate.height}%`,
                 }}
               >
                 {/* строки: на лицевой Зона 1, на обороте своя зона */}
