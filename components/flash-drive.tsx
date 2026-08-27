@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { apparatusShape } from "@/components/icons";
 import measures from "@/lib/drive-measures.json";
@@ -50,6 +50,8 @@ const WIDE_MID = SPEC.plate / 2;
  */
 const LINE_STEP = SPEC.fieldH / SPEC.lines;
 const BASE_SIZE = LINE_STEP * 0.86;
+/** Впадина под палец: на изделии она заметно крупнее заклёпки. */
+const DIMPLE_R = 3;
 const LABEL_SIZE = 2.4; // кегль подписи предмета, мм
 const TILT = (7 * Math.PI) / 180; // наклон подписи, как на фотографии партии
 const PROBE_Y = -20; // базовая линия невидимого дубля, за пределами пластины
@@ -462,6 +464,7 @@ function BackEngraving({
   squeeze: number;
   font: ReturnType<typeof fontById>;
 }) {
+  const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const зонаЦентр = FIELD_L + SPEC.backField / 2;
   const свободно = FIELD_R - (FIELD_L + SPEC.backField);
   const осьX = FIELD_L + SPEC.backField + свободно * 0.32;
@@ -469,14 +472,38 @@ function BackEngraving({
 
   return (
     <g>
-      <circle
-        cx={осьX}
-        cy={MID_Y}
-        r={2.1}
+      {/* Впадина под палец — ею флешку выдвигают. Это не гравировка
+          и не кружок: металл вдавлен, поэтому верх внутри в тени,
+          а низ ловит свет. Снаружи по нижнему краю идёт тонкий блик —
+          кромка, поднятая вокруг углубления. */}
+      <defs>
+        <radialGradient id={`${uid}-dimple`} cx="50%" cy="34%" r="72%">
+          <stop offset="0%" stopColor="#000" stopOpacity="0.30" />
+          <stop offset="52%" stopColor="#000" stopOpacity="0.13" />
+          <stop offset="86%" stopColor="#fff" stopOpacity="0.05" />
+          <stop offset="100%" stopColor="#fff" stopOpacity="0.30" />
+        </radialGradient>
+      </defs>
+
+      <circle cx={осьX} cy={MID_Y} r={DIMPLE_R} fill={`url(#${uid}-dimple)`} />
+      {/* верхняя дуга — тень от кромки, нижняя — блик на дне */}
+      <path
+        d={`M ${осьX - DIMPLE_R * 0.94} ${MID_Y - DIMPLE_R * 0.2}
+            A ${DIMPLE_R} ${DIMPLE_R} 0 0 1 ${осьX + DIMPLE_R * 0.94} ${MID_Y - DIMPLE_R * 0.2}`}
+        fill="none"
+        stroke="#000"
+        strokeOpacity="0.34"
+        strokeWidth="0.28"
+        strokeLinecap="round"
+      />
+      <path
+        d={`M ${осьX - DIMPLE_R * 0.9} ${MID_Y + DIMPLE_R * 0.3}
+            A ${DIMPLE_R} ${DIMPLE_R} 0 0 0 ${осьX + DIMPLE_R * 0.9} ${MID_Y + DIMPLE_R * 0.3}`}
         fill="none"
         stroke="#fff"
         strokeOpacity="0.5"
-        strokeWidth="0.35"
+        strokeWidth="0.3"
+        strokeLinecap="round"
       />
 
       <g transform={`translate(${логоX} ${MID_Y})`}>
