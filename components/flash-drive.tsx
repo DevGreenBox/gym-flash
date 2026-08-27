@@ -331,7 +331,6 @@ function LabelPlate({
    * показывал, что всё влезает, а на пластине не влезало —
    * `getBBox()` возвращает габарит до собственного поворота группы.
    */
-  const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const probe = useRef<SVGGElement>(null);
   const [m, setM] = useState({ fit: 1, ascent: LABEL_SIZE * 0.72 });
   const key = `${label}|${font.id}`;

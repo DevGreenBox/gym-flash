@@ -82,6 +82,9 @@ const BACK_FIELDS = [
  * как «не влезло», а не как «листается дальше». Межколонник в вычитании
  * повторяет `gap` ленты: 8 px до 1024 и 12 px после.
  */
+/** Левый край поля гравировки в миллиметрах: общий для обеих сторон. */
+const ZONE_L = (SPEC.plate - SPEC.field) / 2;
+
 const TILE =
   "shrink-0 snap-start last:snap-end w-[calc((100%-24px)/4)] lg:w-[calc((100%-36px)/4)] xl:w-[calc((100%-48px)/5)]";
 
@@ -478,12 +481,20 @@ function DriveItem({
    * сначала переключаемся на «Надпись» и ждём перерисовки: у скрытой
    * панели `visibility: hidden`, и фокус на неё не встаёт.
    */
-  const pending = useRef<number | null>(null);
+  const backRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const pending = useRef<{ сторона: "front" | "back"; i: number } | null>(null);
 
   useEffect(() => {
-    if (step !== 0 || pending.current === null) return;
-    fieldRefs.current[pending.current]?.focus({ preventScroll: true });
+    const ждёт = pending.current;
+    if (!ждёт) return;
+    const нужныйШаг = ждёт.сторона === "back" ? stepAt("back") : stepAt("lines");
+    if (step !== нужныйШаг) return;
+    const ряд = ждёт.сторона === "back" ? backRefs : fieldRefs;
+    ряд.current[ждёт.i]?.focus({ preventScroll: true });
     pending.current = null;
+    // `stepAt` считается из постоянного списка шагов и не меняется
+    // между отрисовками — в зависимостях ему делать нечего
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   /** Вкладки — одна остановка таба, внутри ходят стрелками. */
@@ -525,17 +536,21 @@ function DriveItem({
     setApparatus(item.id, APPARATUS[(now + 1) % APPARATUS.length].id, false);
   };
 
-  const focusField = (i: number) => {
-    fieldRefs.current[i]?.scrollIntoView({
-      block: "nearest",
-      behavior: "smooth",
-    });
-    if (step === 0) {
-      fieldRefs.current[i]?.focus({ preventScroll: true });
+  /**
+   * Тычок в строку на металле ведёт в её поле — и на лицевой, и на обороте.
+   * Если открыт другой шаг, сначала переключаемся и ждём перерисовки:
+   * у скрытой панели `visibility: hidden`, фокус на неё не встаёт.
+   */
+  const focusLine = (сторона: "front" | "back", i: number) => {
+    const ряд = сторона === "back" ? backRefs : fieldRefs;
+    const нужный = сторона === "back" ? stepAt("back") : stepAt("lines");
+    ряд.current[i]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (step === нужный) {
+      ряд.current[i]?.focus({ preventScroll: true });
       return;
     }
-    pending.current = i;
-    setStep(0);
+    pending.current = { сторона, i };
+    openStep(нужный);
   };
 
   // конструктор — один блок, а не заголовок и отдельная от него форма
@@ -618,13 +633,16 @@ function DriveItem({
                 className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
               />
 
-              {/* Гравировка кликабельна: тычешь в строку на металле —
-                  попадаешь в её поле, тычешь в знак — в выбор предмета.
-                  Поле в фокусе подсвечивает свою строку, и наоборот.
-                  На обороте попадать не во что: его гравировку ещё
-                  определяет заказчик. */}
+              {/* Гравировка кликабельна с обеих сторон: тычешь в строку
+                  на металле — попадаешь в её поле, тычешь в знак —
+                  листаешь предмет. Поле в фокусе подсвечивает свою
+                  строку, и наоборот.
+
+                  Зоны считаются от чертежа в долях пластины, а не
+                  подобраны на глаз: поле гравировки 45 мм внутри
+                  корпуса 50 мм, дальше Зона 1 в 32 мм, промежуток
+                  и Зона 2 в 11,5 мм. На обороте зона одна — 28 мм. */}
               <div
-                hidden={side === "back"}
                 className="absolute"
                 style={{
                   left: `${measures.solo.plate.left}%`,
@@ -633,34 +651,44 @@ function DriveItem({
                   height: `${measures.solo.plate.height}%`,
                 }}
               >
-                <div className="flex h-full">
-                  <div className="flex h-full flex-[66.9] flex-col">
-                    {FIELDS.map((f, i) => (
-                      <button
-                        key={f.label}
-                        type="button"
-                        onClick={() => focusField(i)}
-                        aria-label={`Изменить: ${f.label.toLowerCase()}`}
-                        className={`flex-1 cursor-text rounded-[3px] transition-colors duration-200 hover:bg-white/15 ${
-                          focused === i ? "bg-white/15" : ""
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  {/* Знак листается прямо на металле: каждый тычок ставит
-                      следующий предмет по кругу. Ходить в чипсы справа
-                      ради того же выбора незачем — они остаются для
-                      прямого попадания и для клавиатуры. Без знака зоны
-                      нет: нажимать не на что. */}
-                  {apparatusId ? (
+                {/* строки: на лицевой Зона 1, на обороте своя зона */}
+                <div
+                  className="absolute flex flex-col"
+                  style={{
+                    left: `${(ZONE_L / SPEC.plate) * 100}%`,
+                    width: `${((side === "back" ? SPEC.backField : SPEC.textField) / SPEC.plate) * 100}%`,
+                    top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
+                    height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
+                  }}
+                >
+                  {(side === "back" ? BACK_FIELDS : FIELDS).map((f, i) => (
                     <button
+                      key={f.label}
                       type="button"
-                      onClick={cycleApparatus}
-                      aria-label={`Предмет: ${apparatus}. Нажмите, чтобы поставить следующий`}
-                      className="my-1 mr-1 flex-[23] cursor-pointer rounded-[3px] transition-colors duration-200 hover:bg-white/15"
+                      onClick={() => focusLine(side, i)}
+                      aria-label={`Изменить: ${f.label.toLowerCase()}`}
+                      className={`flex-1 cursor-text rounded-[3px] transition-colors duration-200 hover:bg-white/15 ${
+                        side === "front" && focused === i ? "bg-white/15" : ""
+                      }`}
                     />
-                  ) : null}
+                  ))}
                 </div>
+
+                {/* знак листается прямо на металле — только на лицевой */}
+                {side === "front" && apparatusId ? (
+                  <button
+                    type="button"
+                    onClick={cycleApparatus}
+                    aria-label={`Предмет: ${apparatus}. Нажмите, чтобы поставить следующий`}
+                    className="absolute cursor-pointer rounded-[3px] transition-colors duration-200 hover:bg-white/15"
+                    style={{
+                      left: `${((SPEC.plate - (SPEC.plate - SPEC.field) / 2 - SPEC.iconField) / SPEC.plate) * 100}%`,
+                      width: `${(SPEC.iconField / SPEC.plate) * 100}%`,
+                      top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
+                      height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
+                    }}
+                  />
+                ) : null}
               </div>
             </div>
 
@@ -858,6 +886,9 @@ function DriveItem({
                         </span>
                       </span>
                       <input
+                        ref={(el) => {
+                          backRefs.current[i] = el;
+                        }}
                         value={item.back[i]}
                         onChange={(e) =>
                           setBackLine(item.id, i, e.target.value, SPEC.backChars)
