@@ -21,7 +21,7 @@ import {
  * в один. Первое число — версия: старые ссылки не должны ломаться,
  * когда формат изменится.
  */
-const VERSION = 1;
+const VERSION = 2;
 
 /** Дальше этого адрес перестаёт открываться частью почтовых клиентов. */
 export const MAX_LINK = 1800;
@@ -49,8 +49,16 @@ export function encodeOrder(items: CartItem[]): string {
       0,
       FONTS.findIndex((x) => x.id === it.fontId),
     );
-    const base: Tuple = [c, a, f, ...it.lines, it.qty];
-    // свой оттенок — единственное, что не сводится к номеру в палитре
+    /* Порядок полей: цвет, знак, шрифт, три строки лица, количество,
+       три строки оборота, свой оттенок последним — он нужен редко. */
+    const base: Tuple = [
+      c,
+      a,
+      f,
+      ...it.lines,
+      it.qty,
+      ...(it.back ?? ["", "", ""]),
+    ];
     return c === -1 && isHex(it.customHex) ? [...base, it.customHex] : base;
   });
   return b64url(JSON.stringify([VERSION, tuples]));
@@ -66,13 +74,19 @@ export function encodeOrder(items: CartItem[]): string {
 export function decodeOrder(code: string): Omit<CartItem, "id">[] | null {
   try {
     const parsed: unknown = JSON.parse(unb64url(code));
-    if (!Array.isArray(parsed) || parsed[0] !== VERSION) return null;
+    if (!Array.isArray(parsed) || ![1, 2].includes(parsed[0] as number))
+      return null;
     const rows = parsed[1];
     if (!Array.isArray(rows) || !rows.length) return null;
 
+    const версия = parsed[0];
     const items = rows.flatMap((row): Omit<CartItem, "id">[] => {
       if (!Array.isArray(row) || row.length < 7) return [];
-      const [c, a, f, l1, l2, l3, q, hex] = row as (string | number)[];
+      const [c, a, f, l1, l2, l3, q] = row as (string | number)[];
+      // в первой версии оборота не было, свой оттенок стоял восьмым
+      const back = версия === 1 ? ["", "", ""] : row.slice(7, 10);
+      const hex = версия === 1 ? row[7] : row[10];
+
       if (typeof c !== "number" || typeof a !== "number") return [];
       if (typeof f !== "number" || !FONTS[f]) return [];
 
@@ -96,6 +110,9 @@ export function decodeOrder(code: string): Omit<CartItem, "id">[] | null {
           apparatusId: a === -1 ? null : APPARATUS[a].id,
           fontId: FONTS[f].id,
           lines: lines as [string, string, string],
+          back: [0, 1, 2].map((i) =>
+            typeof back[i] === "string" ? (back[i] as string).slice(0, SPEC.backChars) : "",
+          ) as [string, string, string],
           qty,
         },
       ];

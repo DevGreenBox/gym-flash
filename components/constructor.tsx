@@ -24,6 +24,7 @@ import {
   removeItem,
   resetEngraving,
   setApparatus,
+  setBackLine,
   setColor,
   setLine,
   undoRemove,
@@ -64,7 +65,15 @@ const STEPS = [
   { id: "lines", title: "Надпись" },
   { id: "apparatus", title: "Предмет" },
   { id: "color", title: "Оттенок" },
+  { id: "back", title: "Оборот" },
 ];
+
+/** Оборотная сторона: чертёж требует гравировку в одну, две или три строки. */
+const BACK_FIELDS = [
+  { label: "Строка 1", hint: "СШОР-35" },
+  { label: "Строка 2", hint: "«Совершенство»" },
+  { label: "Строка 3", hint: "Ростов-на-Дону" },
+] as const;
 
 /**
  * Окно в ленте заказа. Ширина считается от ленты, а не задана в пикселях:
@@ -183,6 +192,7 @@ export function Constructor({
         apparatusId: it.apparatusId,
         fontId: it.fontId,
         lines: shownLines(it.lines),
+        back: it.back,
         qty,
       }),
     );
@@ -425,6 +435,13 @@ function DriveItem({
   const stepAt = (id: string) => steps.findIndex((s) => s.id === id);
 
   /** Общая обвязка панели шага: связь с вкладкой, видимость и сторона входа. */
+  /* Открыли шаг «Оборот» — превью само поворачивается: править сторону,
+     которой не видно, невозможно. Обратно к лицу — так же. */
+  const openStep = (i: number) => {
+    setStep(i);
+    setSide(steps[i]?.id === "back" ? "back" : "front");
+  };
+
   const pane = (id: string) => {
     const i = stepAt(id);
     const on = step === i;
@@ -486,7 +503,7 @@ function DriveItem({
         : e.key === "End"
           ? steps.length - 1
           : (step + move + steps.length) % steps.length;
-    setStep(next);
+    openStep(next);
     tabsRef.current
       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
       [next]?.focus();
@@ -594,6 +611,7 @@ function DriveItem({
                 color={color.hex}
                 apparatusId={apparatusId}
                 lines={shown}
+                back={item.back}
                 fontId={item.fontId}
                 chain={false}
                 side={side}
@@ -719,7 +737,7 @@ function DriveItem({
                 aria-selected={step === i}
                 aria-controls={`${paneId}-${s.id}`}
                 tabIndex={step === i ? 0 : -1}
-                onClick={() => setStep(i)}
+                onClick={() => openStep(i)}
                 className={`tap inline-flex cursor-pointer items-baseline gap-2 text-[0.9375rem] transition-colors duration-300 ${
                   step === i ? "text-ink" : "text-ink/65 hover:text-ink"
                 }`}
@@ -828,6 +846,35 @@ function DriveItem({
                 </p>
               </Step>
             </div>
+            <div {...pane("back")}>
+              <Step note="Зона 28 × 15 мм. Строки центруются, как на лицевой.">
+                <div className="space-y-6">
+                  {BACK_FIELDS.map((f, i) => (
+                    <label key={f.label} className="field block">
+                      <span className="flex items-baseline justify-between text-[0.6875rem] font-semibold tracking-[0.14em] text-ink/65 uppercase">
+                        {f.label}
+                        <span className="font-normal tracking-normal tabular-nums">
+                          {item.back[i].length}/{SPEC.backChars}
+                        </span>
+                      </span>
+                      <input
+                        value={item.back[i]}
+                        onChange={(e) =>
+                          setBackLine(item.id, i, e.target.value, SPEC.backChars)
+                        }
+                        placeholder={f.hint}
+                        className="mt-2 w-full border-b border-hairline bg-transparent pb-2.5 text-[1.0625rem] outline-none"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-4 text-[0.75rem] text-ink/65">
+                  Логотип и ось поворота на обороте всегда — их не выбирают.
+                  Выбор картинки из базы оборотов — уточняется.
+                </p>
+              </Step>
+            </div>
+
             <div {...pane("color")}>
               <Step note={`${color.name} · ${color.hex}`}>
                 {/* Полоса вместо кружков: цвет выбирается движением, как в пипетке.
@@ -894,7 +941,7 @@ function DriveItem({
           {step < steps.length - 1 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => s + 1)}
+              onClick={() => openStep(step + 1)}
               className="group mt-8 inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-pill border border-ink px-6 text-[0.875rem] font-medium transition-colors duration-300 hover:bg-ink hover:text-paper"
             >
               Далее: {steps[step + 1].title.toLowerCase()}

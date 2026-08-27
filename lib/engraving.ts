@@ -25,6 +25,12 @@ import {
 export type Item = {
   id: string;
   lines: [string, string, string];
+  /**
+   * Оборотная сторона: чертёж требует гравировку в одну, две или три
+   * строки в зоне 28 × 15 мм. Пустые строки в раскладке не участвуют,
+   * как и на лицевой.
+   */
+  back: [string, string, string];
   colorId: string;
   /** свой оттенок вне палитры; значим только при colorId === CUSTOM_COLOR */
   customHex?: string;
@@ -48,6 +54,7 @@ const blank = (
 ): Item => ({
   id: `d${++seq}`,
   lines: lines ? ([...lines] as Item["lines"]) : ["", "", ""],
+  back: ["", "", ""],
   colorId: DEFAULT_COLOR_FOR[apparatusId],
   apparatusId,
   fontId,
@@ -56,6 +63,7 @@ const blank = (
 const first = (): Item => ({
   id: "d0",
   lines: ["", "", ""],
+  back: ["", "", ""],
   colorId: "red",
   apparatusId: "hoop",
   fontId: FONTS[0].id,
@@ -96,10 +104,17 @@ function read(): Item[] {
       if (!custom && !COLORS.some((c) => c.id === colorId)) return [];
       if (!Array.isArray(lines) || lines.length !== 3) return [];
       if (!lines.every((l) => typeof l === "string")) return [];
+      const back = Array.isArray((it as Record<string, unknown>).back)
+        ? ((it as Record<string, unknown>).back as unknown[])
+        : [];
       return [
         {
           id,
           lines: lines as Item["lines"],
+          // оборот появился позже: у наборов, собранных до него, поля нет
+          back: [0, 1, 2].map((i) =>
+            typeof back[i] === "string" ? (back[i] as string) : "",
+          ) as Item["lines"],
           colorId: colorId as string,
           ...(custom ? { customHex: custom } : {}),
           apparatusId: apparatusId as string | null,
@@ -165,6 +180,15 @@ export function setLine(id: string, i: number, value: string, max: number) {
   patch(id, { lines });
 }
 
+/** Строка оборота правится так же, как лицевая: по одной. */
+export function setBackLine(id: string, i: number, value: string, max: number) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  const back = [...it.back] as Item["back"];
+  back[i] = value.slice(0, max);
+  patch(id, { back });
+}
+
 export function setColor(id: string, colorId: string) {
   patch(id, { colorId, customHex: undefined });
 }
@@ -222,7 +246,12 @@ export function duplicateItem(id: string): string {
   const at = state.items.findIndex((it) => it.id === id);
   if (at < 0) return id;
   const src = state.items[at];
-  const copy: Item = { ...src, id: `d${++seq}`, lines: [...src.lines] };
+  const copy: Item = {
+    ...src,
+    id: `d${++seq}`,
+    lines: [...src.lines],
+    back: [...src.back],
+  };
   const next = [...state.items];
   next.splice(at + 1, 0, copy);
   commit(next);

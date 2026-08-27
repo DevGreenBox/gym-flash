@@ -124,6 +124,7 @@ export function IncomingDraft() {
             replaceItems(
               draft.map((it) => ({
                 lines: it.lines,
+                back: it.back ?? (["", "", ""] as [string, string, string]),
                 colorId: it.colorId,
                 customHex: it.customHex,
                 apparatusId: it.apparatusId,

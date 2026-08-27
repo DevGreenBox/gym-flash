@@ -76,11 +76,14 @@ export function FlashDrive({
   chain = true,
   priority,
   side = "front",
+  back,
 }: {
   color: string;
   /** null — гравировка без знака: поле текста занимает всю пластину */
   apparatusId: string | null;
   lines: readonly [string, string, string];
+  /** строки оборотной стороны; показываются при side="back" */
+  back?: readonly [string, string, string];
   /** гарнитура гравировки; по умолчанию рукописная, как в текущих партиях */
   fontId?: string;
   className?: string;
@@ -109,7 +112,7 @@ export function FlashDrive({
    */
   const probe = useRef<SVGGElement>(null);
   const [squeeze, setSqueeze] = useState(SQUEEZE);
-  const key = `${lines.join("|")}|${font.id}`;
+  const key = `${lines.join("|")}|${(back ?? []).join("|")}|${side}|${font.id}`;
 
   useEffect(() => {
     // `getBBox()` возвращает габарит до собственного преобразования группы,
@@ -120,8 +123,9 @@ export function FlashDrive({
        Именно сжимается — кегль не трогаем. Уменьшать кегль нельзя:
        три строки обязаны занимать те же 15 мм по высоте, а строка
        с длинной фамилией — стоять вровень с остальными. */
-    setSqueeze(Math.min(SQUEEZE, SPEC.textField / w));
-  }, [key]);
+    const зона = side === "back" ? SPEC.backField : SPEC.textField;
+    setSqueeze(Math.min(SQUEEZE, зона / w));
+  }, [key, side]);
 
   const size = BASE_SIZE;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
@@ -130,7 +134,8 @@ export function FlashDrive({
   /* Пустые строки в раскладке не участвуют: чертёж требует центровать
      надпись по зоне, сколько бы строк ни было заполнено. Две строки
      встают вокруг середины, одна — ровно в середину. */
-  const filled = lines.filter((l) => l.trim());
+  const источник = side === "back" ? (back ?? ["", "", ""]) : lines;
+  const filled = источник.filter((l) => l.trim());
   const rows = filled.length ? filled : [""];
   const firstY = MID_Y - ((rows.length - 1) * LINE_STEP) / 2;
 
@@ -212,7 +217,7 @@ export function FlashDrive({
             visibility: "hidden",
           }}
         >
-          {lines.map((line, i) => (
+          {источник.map((line, i) => (
             <text key={i} x={0} y={PROBE_Y} fontSize={BASE_SIZE}>
               {line}
             </text>
@@ -229,7 +234,13 @@ export function FlashDrive({
             font={font}
           />
         ) : (
-          <BackEngraving font={font} />
+          <BackEngraving
+            rows={rows}
+            firstY={firstY}
+            size={size}
+            squeeze={squeeze}
+            font={font}
+          />
         )}
 
         {side === "front" && apparatusId ? (
@@ -428,23 +439,36 @@ function FrontEngraving({
 /**
  * Оборотная сторона.
  *
- * Постоянные элементы взяты с фотографий заказчика: ось поворотного
- * механизма кружком и логотип у колпачка. Переменная часть — левая
- * зона 28 мм по чертежу; её содержимое заказчик ещё определяет,
- * поэтому здесь она пока пустая, а не заполнена выдумкой.
+ * Чертёж: зона гравировки 28 × 15 мм, левый край выровнен по зелёной
+ * пунктирной линии — той же, что задаёт левый край поля на лицевой.
+ * Центровка «аналогична центровке лицевой»: строки стоят по центру
+ * зоны и по горизонтали, и по вертикали, сколько бы их ни было
+ * заполнено — одна, две или три.
  *
- * Центровка та же, что на лицевой, но зона прижата к левому краю
- * поля гравировки — как требует чертёж.
+ * Ось поворотного механизма и логотип у колпачка — не гравировка,
+ * а сам предмет: они взяты с фотографий изделия и потому нарисованы
+ * всегда.
  */
-function BackEngraving({ font }: { font: ReturnType<typeof fontById> }) {
-  const зонаЛ = FIELD_L;
-  const зонаП = FIELD_L + SPEC.backField;
-  const осьX = зонаП + (FIELD_R - зонаП) * 0.36;
-  const логоX = FIELD_R - 4.6;
+function BackEngraving({
+  rows,
+  firstY,
+  size,
+  squeeze,
+  font,
+}: {
+  rows: string[];
+  firstY: number;
+  size: number;
+  squeeze: number;
+  font: ReturnType<typeof fontById>;
+}) {
+  const зонаЦентр = FIELD_L + SPEC.backField / 2;
+  const свободно = FIELD_R - (FIELD_L + SPEC.backField);
+  const осьX = FIELD_L + SPEC.backField + свободно * 0.32;
+  const логоX = FIELD_R - 4.4;
 
   return (
     <g>
-      {/* ось поворотного механизма: на изделии это заклёпка */}
       <circle
         cx={осьX}
         cy={MID_Y}
@@ -455,58 +479,62 @@ function BackEngraving({ font }: { font: ReturnType<typeof fontById> }) {
         strokeWidth="0.35"
       />
 
-      {/* логотип у колпачка — он на обороте всегда */}
       <g transform={`translate(${логоX} ${MID_Y})`}>
-        <text
-          x={0}
-          y={-0.9}
-          fontSize={1.9}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#fff"
-          fillOpacity="0.9"
-          style={{ fontFamily: "var(--font-sans)", fontWeight: 700, letterSpacing: "0.04em" }}
-        >
-          PERSONAL
-        </text>
-        <text
-          x={0}
-          y={1.3}
-          fontSize={1.9}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#fff"
-          fillOpacity="0.9"
-          style={{ fontFamily: "var(--font-sans)", fontWeight: 700, letterSpacing: "0.04em" }}
-        >
-          FLASH
-        </text>
+        {["PERSONAL", "FLASH"].map((w, i) => (
+          <text
+            key={w}
+            x={0}
+            y={i ? 1.3 : -0.9}
+            fontSize={1.9}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#fff"
+            fillOpacity="0.9"
+            style={{
+              fontFamily: "var(--font-sans)",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+            }}
+          >
+            {w}
+          </text>
+        ))}
       </g>
 
-      {/* левая зона 28 мм — место под гравировку оборота */}
-      <rect
-        x={зонаЛ}
-        y={FIELD_T}
-        width={SPEC.backField}
-        height={SPEC.fieldH}
-        fill="none"
-        stroke="#fff"
-        strokeOpacity="0.18"
-        strokeDasharray="0.8 0.8"
-        strokeWidth="0.2"
-      />
-      <text
-        x={зонаЛ + SPEC.backField / 2}
-        y={MID_Y}
-        fontSize={2.1}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="#fff"
-        fillOpacity="0.5"
+      <g
         style={{ fontFamily: font.css, fontWeight: font.weight }}
+        transform={`translate(${зонаЦентр} 0) scale(${squeeze} 1)`}
       >
-        гравировка оборота
-      </text>
+        {rows.map((line, i) => {
+          const y = firstY + i * LINE_STEP;
+          return (
+            <g key={i}>
+              <text
+                x={0}
+                y={y + 0.24}
+                fontSize={size}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#000"
+                fillOpacity="0.34"
+              >
+                {line}
+              </text>
+              <text
+                x={0}
+                y={y}
+                fontSize={size}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#fff"
+                fillOpacity="0.96"
+              >
+                {line}
+              </text>
+            </g>
+          );
+        })}
+      </g>
     </g>
   );
 }
