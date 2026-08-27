@@ -487,9 +487,17 @@ function BackEngraving({
   font: ReturnType<typeof fontById>;
 }) {
   const зонаЦентр = FIELD_L + SPEC.backField / 2;
-  const свободно = FIELD_R - (FIELD_L + SPEC.backField);
-  const осьX = FIELD_L + SPEC.backField + свободно * 0.32;
-  const логоX = FIELD_R - 4.4;
+
+  /* Логотип строкой — задаётся шириной, а не высотой: пропорция
+     8,33 : 1, и от высоты ширина выходит вдвое больше свободного места.
+     На изделии он мелкий и стоит между впадиной и колпачком. */
+  const ЛОГО_Ш = 8.4;
+  const ЛОГО_В = ЛОГО_Ш / (566.24 / 67.96);
+  const логоЛ = FIELD_R - 0.6 - ЛОГО_Ш;
+  const логоX = логоЛ + ЛОГО_Ш / 2;
+
+  /* Впадина — посередине между зоной гравировки и логотипом. */
+  const осьX = (FIELD_L + SPEC.backField + логоЛ) / 2;
 
   return (
     <g>
@@ -518,27 +526,18 @@ function BackEngraving({
         strokeLinecap="round"
       />
 
-      <g transform={`translate(${логоX} ${MID_Y})`}>
-        {["PERSONAL", "FLASH"].map((w, i) => (
-          <text
-            key={w}
-            x={0}
-            y={i ? 1.3 : -0.9}
-            fontSize={1.9}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#fff"
-            fillOpacity="0.9"
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-            }}
-          >
-            {w}
-          </text>
-        ))}
-      </g>
+      {/* Логотип у колпачка — настоящий вектор бренда. Белая копия
+          лежит отдельным файлом: `currentColor` во внешнем SVG
+          не работает, а гравировка на металле светлая. */}
+      <image
+        href="/logo-white.svg"
+        x={логоX - ЛОГО_Ш / 2}
+        y={MID_Y - ЛОГО_В / 2}
+        width={ЛОГО_Ш}
+        height={ЛОГО_В}
+        opacity="0.92"
+        preserveAspectRatio="xMidYMid meet"
+      />
 
       <g
         style={{ fontFamily: font.css, fontWeight: font.weight }}

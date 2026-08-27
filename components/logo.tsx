@@ -1,34 +1,49 @@
 import { site } from "@/lib/site";
 
 /**
- * Логотип заказчика, пересобранный под систему сайта: та же структура
- * (вордмарк + подпись + знак флешки), но красный заменён на цвет выбранной
- * флешки — второго акцента на странице нет.
+ * Логотип бренда — настоящий, из вектора заказчика
+ * (`Лого Personal Flash СТРОКА.pdf`, обрезан и облегчён в `public/logo.svg`).
+ *
+ * Рисуется маской, а не картинкой: `<img>` с внешним SVG живёт в своём
+ * документе и `currentColor` из страницы не видит — логотип остался бы
+ * чёрным везде, включая тёмные подложки. Маска красит его цветом текста,
+ * а файл при этом один и кэшируется.
+ *
+ * Пропорция 566,24 : 67,96 взята из самого вектора: высота задаётся
+ * кеглем строки, ширина считается от неё.
  */
-export function Logo({ className }: { className?: string }) {
+const ОТНОШЕНИЕ = 566.24 / 67.96;
+
+export function Logo({
+  className,
+  tagline = true,
+}: {
+  className?: string;
+  /** подпись «Именные флешки» под строкой — она не часть логотипа */
+  tagline?: boolean;
+}) {
   return (
     <span className={`inline-grid leading-none ${className ?? ""}`}>
-      <span className="flex items-center gap-[0.45em]">
-        <span className="text-[1em] font-extrabold tracking-[-0.02em] uppercase">
-          {site.name}
+      <span
+        role="img"
+        aria-label={site.name}
+        className="block bg-[currentColor]"
+        style={{
+          height: "1em",
+          width: `${ОТНОШЕНИЕ}em`,
+          maskImage: "url(/logo.svg)",
+          WebkitMaskImage: "url(/logo.svg)",
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskSize: "contain",
+          WebkitMaskSize: "contain",
+        }}
+      />
+      {tagline ? (
+        <span className="mt-[0.5em] text-[0.5em] font-semibold tracking-[0.24em] text-ink/65 uppercase">
+          {site.tagline}
         </span>
-        <svg
-          viewBox="0 0 30 16"
-          className="h-[0.72em] w-auto shrink-0"
-          fill="none"
-          stroke="var(--brand)"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M1 3.6a2.6 2.6 0 0 1 2.6-2.6h16.2a2.6 2.6 0 0 1 2.6 2.6v8.8a2.6 2.6 0 0 1-2.6 2.6H3.6A2.6 2.6 0 0 1 1 12.4z" />
-          <path d="M22.4 5.4h6.2M22.4 10.6h6.2" />
-        </svg>
-      </span>
-      <span className="mt-[0.42em] text-[0.53em] font-semibold tracking-[0.24em] text-ink/65 uppercase">
-        {site.tagline}
-      </span>
+      ) : null}
     </span>
   );
 }
