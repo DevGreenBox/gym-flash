@@ -17,7 +17,7 @@ import { SPEC } from "@/lib/site";
  */
 export const КОЛПАЧОК = 5.4;
 /** Вылет торца по горизонтали. */
-const КРАЙ = 2.6;
+export const КРАЙ = 2.6;
 const КОЛЬЦО_R = 2.3;
 const ПОЛЕ = 1;
 
