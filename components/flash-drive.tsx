@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { apparatusShape } from "@/components/icons";
 import measures from "@/lib/drive-measures.json";
-import { APPARATUS, SPEC, fontById } from "@/lib/site";
+import { APPARATUS, SPEC, SQUEEZE, fontById } from "@/lib/site";
 
 /**
  * Флешка — снимок базовой модели (`public/drive/*.png`) плюс гравировка
@@ -18,22 +18,41 @@ import { APPARATUS, SPEC, fontById } from "@/lib/site";
  * (`tint`), иначе всё уходило бы в темноту.
  *
  * Гравировка живёт в отдельном SVG с viewBox в миллиметрах — координаты
- * те же, что на чертеже заказчика: пластина 49,96 × 16,8 мм, поле текста
- * 33,42 мм, поле знака 11,50 мм.
+ * те же, что на чертеже заказчика от 27.08.
  */
 
-const PLATE_H = 16.8; // высота пластины, мм
-const BASE_SIZE = 4.1; // кегль гравировки, мм — ниже опускаемся только по нужде
-const LABEL_SIZE = 2.7; // кегль подписи предмета, мм
+/*
+ * Чертёж, миллиметры. Всё производное считается здесь, чтобы на схеме
+ * и в коде стояли одни и те же числа:
+ *
+ *   корпус 50 × 17, поле гравировки 45 × 15 — по центру корпуса,
+ *   значит поля по 2,5 слева и справа и по 1 сверху и снизу;
+ *   Зона 2 прижата к правому краю поля, Зона 1 — к левому,
+ *   между ними 1,5.
+ *
+ *   2,5 ── Зона 1 (32) ── 34,5 ─1,5─ 36 ── Зона 2 (11,5) ── 47,5
+ */
+const FIELD_L = (SPEC.plate - SPEC.field) / 2;
+const FIELD_R = FIELD_L + SPEC.field;
+const FIELD_T = (SPEC.plateH - SPEC.fieldH) / 2;
+const MID_Y = SPEC.plateH / 2;
+const ZONE2_L = FIELD_R - SPEC.iconField;
+const ZONE2_MID = ZONE2_L + SPEC.iconField / 2;
+const ZONE1_L = ZONE2_L - SPEC.gap - SPEC.textField;
+const ZONE1_MID = ZONE1_L + SPEC.textField / 2;
+/** без знака надпись остаётся 32 мм и встаёт по центру поля гравировки */
+const WIDE_MID = SPEC.plate / 2;
+
+/**
+ * Кегль: три строки должны уложиться в 15 мм высоты зоны. Шаг строки
+ * берём 5 мм — ровно треть зоны, кегль чуть меньше шага, чтобы соседние
+ * строки не сцеплялись выносными.
+ */
+const LINE_STEP = SPEC.fieldH / SPEC.lines;
+const BASE_SIZE = LINE_STEP * 0.86;
+const LABEL_SIZE = 2.4; // кегль подписи предмета, мм
 const TILT = (7 * Math.PI) / 180; // наклон подписи, как на фотографии партии
 const PROBE_Y = -20; // базовая линия невидимого дубля, за пределами пластины
-const MARGIN = 2.6; // поле от края пластины до гравировки
-const TEXT_MID = MARGIN + SPEC.textField / 2;
-/* граница полей — теперь только точка отсчёта для знака: разделяющий
-   волосок с пластины снят */
-const DIVIDER_X = MARGIN + SPEC.textField;
-const ICON_MID = DIVIDER_X + SPEC.iconField / 2;
-const WIDE_MID = SPEC.plate / 2;
 
 /** Средняя яркость серой пластины в базовом снимке. */
 const BASE_LUMA = 179 / 255;
@@ -86,14 +105,29 @@ export function FlashDrive({
   const key = `${lines.join("|")}|${font.id}`;
 
   useEffect(() => {
-    const w = probe.current?.getBBox().width ?? 0;
-    const max = SPEC.textField - 1.2;
-    setScale(w > max ? max / w : 1);
+    // `getBBox()` возвращает габарит до собственного преобразования группы,
+    // поэтому сжатие учитываем сами: на пластину ляжет вдвое уже
+    const w = (probe.current?.getBBox().width ?? 0) * SQUEEZE;
+    setScale(w > SPEC.textField ? SPEC.textField / w : 1);
   }, [key]);
 
   const size = BASE_SIZE * scale;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
-  const textMid = apparatusId ? TEXT_MID : WIDE_MID;
+  const textMid = apparatusId ? ZONE1_MID : WIDE_MID;
+
+  /* Пустые строки в раскладке не участвуют: чертёж требует центровать
+     надпись по зоне, сколько бы строк ни было заполнено. Две строки
+     встают вокруг середины, одна — ровно в середину. */
+  const filled = lines.filter((l) => l.trim());
+  const rows = filled.length ? filled : [""];
+  const firstY = MID_Y - ((rows.length - 1) * LINE_STEP) / 2;
+
+  /* Короб знака: ширина Зоны 2 — потолок. С подписью знак уступает ей
+     низ зоны, без подписи занимает зону целиком. */
+  const ICON_BOX = showLabel ? SPEC.iconField * 0.75 : SPEC.iconField;
+  const ICON_Y = showLabel
+    ? FIELD_T + 0.6
+    : MID_Y - ICON_BOX / 2;
   const m = chain ? measures.full : measures.solo;
   const src = chain ? "/drive/base.png" : "/drive/base-solo.png";
   const mask = chain ? "/drive/plate-mask.png" : "/drive/plate-mask-solo.png";
@@ -149,7 +183,7 @@ export function FlashDrive({
       {/* гравировка: координаты в миллиметрах с чертежа */}
       <svg
         aria-hidden
-        viewBox={`0 0 ${SPEC.plate} ${PLATE_H}`}
+        viewBox={`0 0 ${SPEC.plate} ${SPEC.plateH}`}
         preserveAspectRatio="none"
         className="pointer-events-none absolute"
         style={plate}
@@ -165,19 +199,25 @@ export function FlashDrive({
           }}
         >
           {lines.map((line, i) => (
-            <text key={i} x={textMid} y={-20} fontSize={BASE_SIZE}>
+            <text key={i} x={0} y={PROBE_Y} fontSize={BASE_SIZE}>
               {line}
             </text>
           ))}
         </g>
 
-        <g style={{ fontFamily: font.css, fontWeight: font.weight }}>
-          {lines.map((line, i) => {
-            const y = 4.2 + i * 4.2;
+        {/* Сжатие по горизонтали на 50 % — требование чертежа: так набрана
+            гравировка на производстве. Сжимаем группу вокруг середины зоны,
+            поэтому центровка от него не съезжает. */}
+        <g
+          style={{ fontFamily: font.css, fontWeight: font.weight }}
+          transform={`translate(${textMid} 0) scale(${SQUEEZE} 1)`}
+        >
+          {rows.map((line, i) => {
+            const y = firstY + i * LINE_STEP;
             return (
               <g key={i}>
                 <text
-                  x={textMid}
+                  x={0}
                   y={y + 0.24}
                   fontSize={size}
                   textAnchor="middle"
@@ -187,14 +227,22 @@ export function FlashDrive({
                 >
                   {line}
                 </text>
+                {/* Штрих поверх заливки добирает вес: у замены штрих тоньше,
+                    чем у Segoe Print Bold, а лазер на металле оставляет
+                    сплошной след. `paint-order` кладёт обводку под заливку,
+                    иначе она съедала бы внутренние просветы букв. */}
                 <text
-                  x={textMid}
+                  x={0}
                   y={y}
                   fontSize={size}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="#fff"
                   fillOpacity="0.96"
+                  stroke="#fff"
+                  strokeOpacity="0.96"
+                  strokeWidth={size * 0.05}
+                  style={{ paintOrder: "stroke" }}
                 >
                   {line}
                 </text>
@@ -210,7 +258,10 @@ export function FlashDrive({
                 падала к нижнему краю пластины — между ними зияло, и подпись
                 читалась приклеенной к торцу, а не к своему знаку. */}
             <g
-              transform={`translate(${ICON_MID - 3.6} ${showLabel ? 2.2 : 4.4}) scale(${(showLabel ? 7.2 : 8) / 24})`}
+              /* Знак строго внутри Зоны 2 — 11,5 мм по ширине. Под ним
+                 остаётся место на подпись; без подписи знак встаёт
+                 по центру зоны и занимает её целиком по ширине. */
+              transform={`translate(${ZONE2_MID - ICON_BOX / 2} ${ICON_Y}) scale(${ICON_BOX / 24})`}
               fill="none"
               strokeWidth="2.2"
               strokeLinecap="round"
@@ -282,13 +333,15 @@ function LabelPlate({
 
   const size = LABEL_SIZE * m.fit;
   const step = size * 1.05;
-  const first = 12.8 - (lines.length - 1) * step;
+  /* Нижний край зоны минус запас: подпись стоит под знаком и не выходит
+     за поле гравировки, сколько бы строк в ней ни было. */
+  const first = SPEC.plateH - (SPEC.plateH - SPEC.fieldH) / 2 - 1.1 - (lines.length - 1) * step;
 
   const rows = (fill: string, opacity: string, dy: number) =>
     lines.map((line, i) => (
       <text
         key={line + i}
-        x={ICON_MID}
+        x={ZONE2_MID}
         y={first + i * step + dy}
         fontSize={size}
         textAnchor="middle"
@@ -320,7 +373,7 @@ function LabelPlate({
         }}
       >
         {lines.map((line, i) => (
-          <text key={i} x={ICON_MID} y={PROBE_Y} fontSize={LABEL_SIZE}>
+          <text key={i} x={ZONE2_MID} y={PROBE_Y} fontSize={LABEL_SIZE}>
             {line}
           </text>
         ))}
@@ -328,7 +381,7 @@ function LabelPlate({
 
       <g
         style={{ fontFamily: font.css, fontWeight: font.weight }}
-        transform={`rotate(-7 ${ICON_MID} ${pivot})`}
+        transform={`rotate(-7 ${ZONE2_MID} ${pivot})`}
       >
         {rows("#000", "0.32", 0.2)}
         {rows("#fff", "0.96", 0)}

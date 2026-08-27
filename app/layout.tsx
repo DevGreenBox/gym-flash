@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat, Golos_Text, Prata } from "next/font/google";
+import { Golos_Text, Neucha, Prata } from "next/font/google";
 
 import { MessengerFab } from "@/components/messenger-fab";
 import { SiteFooter } from "@/components/site-footer";
@@ -24,16 +24,13 @@ const golos = Golos_Text({
   display: "swap",
 });
 
-// Подмена Segoe Print Bold: у оригинала нет веб-лицензии.
-// Предзагрузка нужна: рукописным набрана гравировка, а на разделах
-// «Для учёбы» и «Памятный подарок» именно она — самый крупный элемент
-// страницы. Без предзагрузки шрифт приходил последним, надпись
-// перерисовывалась после подмены, и отрисовка страницы засчитывалась
-// на секунду позже (замерено: 3,4 с против 1,6 с на «Для учёбы»).
-const caveat = Caveat({
+// Замена Segoe Print: сам он в веб не отдаётся по лицензии, а Neucha —
+// ближайший кириллический почерк того же склада: прямой, печатный, буквы
+// не связаны. Гравировка — единственное место, где он появляется.
+const neucha = Neucha({
   subsets: ["cyrillic", "latin"],
-  weight: ["700"],
-  variable: "--font-caveat",
+  weight: ["400"],
+  variable: "--font-neucha",
   display: "swap",
 });
 
@@ -98,7 +95,7 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
-      className={`${golos.variable} ${prata.variable} ${caveat.variable}`}
+      className={`${golos.variable} ${prata.variable} ${neucha.variable}`}
     >
       <body className="font-sans antialiased">
         <script

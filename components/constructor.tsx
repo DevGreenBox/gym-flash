@@ -25,8 +25,6 @@ import {
   resetEngraving,
   setApparatus,
   setColor,
-  setCustomColor,
-  setFont,
   setLine,
   undoRemove,
   useEngraving,
@@ -35,13 +33,10 @@ import { FALLBACK, shownLines } from "@/lib/engraving-view";
 import {
   APPARATUS,
   COLORS,
-  CUSTOM_COLOR,
   DEFAULT_COLOR_FOR,
-  FONTS,
   SPEC,
   apparatusLabel,
   colorById,
-  fontById,
   mm,
   resolveColor,
 } from "@/lib/site";
@@ -66,7 +61,6 @@ const FIELDS = [
  */
 const STEPS = [
   { id: "lines", title: "Надпись" },
-  { id: "font", title: "Шрифт" },
   { id: "apparatus", title: "Предмет" },
   { id: "color", title: "Оттенок" },
 ];
@@ -502,7 +496,6 @@ function DriveItem({
   };
 
   const color = resolveColor(item.colorId, item.customHex);
-  const font = fontById(item.fontId);
   const shown = shownLines(item.lines);
   const colorIndex = COLORS.findIndex((c) => c.id === item.colorId);
   const apparatus = apparatusLabel(apparatusId);
@@ -795,48 +788,6 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            <div {...pane("font")}>
-              <Step note={font.note}>
-                <div
-                  role="radiogroup"
-                  aria-label="Шрифт"
-                  className="flex flex-wrap gap-2"
-                >
-                  {FONTS.map((f) => {
-                    const on = f.id === item.fontId;
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => setFont(item.id, f.id)}
-                        className={`chip inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-pill border px-4 text-[0.8125rem] transition-colors duration-300 ${
-                          on
-                            ? "border-ink text-paper"
-                            : "border-hairline text-ink/70 hover:text-ink"
-                        }`}
-                      >
-                        {/* образец набран самой гарнитурой: слово «антиква»
-                          ничего не показывает, а «Аа» показывает */}
-                        <span
-                          aria-hidden
-                          className="text-[1.125rem] leading-none"
-                          style={{ fontFamily: f.css, fontWeight: f.weight }}
-                        >
-                          Аа
-                        </span>
-                        {f.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-3 text-[0.75rem] text-ink/65">
-                  Кегль подбирается под длину строки — надпись не выходит за
-                  пластину.
-                </p>
-              </Step>
-            </div>
             {/* в разделах без предметов шага нет вовсе: скрытая панель
                 всё равно осталась бы в обходе с клавиатуры */}
             {withApparatus ? (
@@ -922,31 +873,9 @@ function DriveItem({
                   }
                 />
 
-                {/* Своё окно цвета — штатное системное: браузер открывает
-                  привычную палитру с RGB и пипеткой, писать её заново незачем.
-                  Оговорка рядом обязательна: семь полей — это то, что цех
-                  точно умеет, произвольный оттенок так не анодируется. */}
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <label
-                    className={`inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-                      item.colorId === CUSTOM_COLOR
-                        ? "border-ink"
-                        : "border-hairline text-ink/70 hover:text-ink"
-                    }`}
-                  >
-                    <input
-                      type="color"
-                      value={color.hex}
-                      onChange={(e) => setCustomColor(item.id, e.target.value)}
-                      aria-label="Свой цвет корпуса"
-                      className="size-6 cursor-pointer rounded-pill border-0 bg-transparent p-0 [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0"
-                    />
-                    Свой цвет
-                  </label>
-                  <p className="text-[0.75rem] text-ink/65">
-                    Вне палитры анодирования — возможность уточняется.
-                  </p>
-                </div>
+                {/* Своего цвета нет намеренно: чертёж требует только семь
+                  полей анодирования, произвольный оттенок цех так
+                  не анодирует. */}
 
                 {/* Комплект собирается здесь, под палитрой: одна кнопка вместо
                   семи проходов по конструктору. Оттенки стоят прямо на ней —

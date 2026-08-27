@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SectionPage } from "@/components/section-page";
 import { SECTIONS } from "@/lib/content";
 import { sectionMeta } from "@/lib/meta";
-import { SPEC, mm } from "@/lib/site";
+import { FONTS, SPEC, mm } from "@/lib/site";
 
 const section = SECTIONS.prices;
 
@@ -11,10 +11,11 @@ export const metadata: Metadata = sectionMeta(section);
 
 /** Что известно точно — снято с чертежа заказчика. Остальное уточняется. */
 const known = [
-  { k: "Пластина", v: mm(SPEC.plate) },
+  { k: "Корпус", v: `${mm(SPEC.plate)} × ${mm(SPEC.plateH)}` },
+  { k: "Поле гравировки", v: `${mm(SPEC.field)} × ${mm(SPEC.fieldH)}` },
   { k: "Поле текста", v: `${mm(SPEC.textField)}, ${SPEC.lines} строки` },
   { k: "Поле знака", v: mm(SPEC.iconField) },
-  { k: "Шрифт гравировки", v: SPEC.font },
+  { k: "Шрифт гравировки", v: FONTS[0].label },
   { k: "Корпус", v: "Анодированный металл, 7 цветов" },
   { k: "Крепление", v: "Кольцо с карабином" },
 ];

@@ -12,7 +12,7 @@ export const metadata: Metadata = sectionMeta(section);
 export default function Page() {
   return (
     <SectionPage section={section} cta={false}>
-      <Constructor heading="Соберите свою флешку" apparatus={false} />
+      <Constructor heading="Соберите свою флешку" />
     </SectionPage>
   );
 }
