@@ -209,7 +209,6 @@ function CartRow({ item }: { item: CartItem }) {
           apparatusId={item.apparatusId}
           lines={item.lines}
           fontId={item.fontId}
-          chain={false}
           className="w-full"
         />
       </div>

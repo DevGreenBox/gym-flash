@@ -141,7 +141,6 @@ export function Directions() {
                     color={colorById(c.preview.colorId).hex}
                     apparatusId={c.preview.apparatusId}
                     lines={c.preview.lines}
-                    chain={false}
                     /* флешка приподнимается над своей подложкой — карточка
                        отвечает на курсор предметом, а не рамкой */
                     className="w-full drop-shadow-[0_12px_20px_rgba(17,17,16,0.14)] transition-transform duration-500 ease-[var(--ease-soft)] group-hover:-translate-y-1.5"

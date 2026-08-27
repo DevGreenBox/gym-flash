@@ -104,7 +104,6 @@ export function Gallery() {
                     color={color.hex}
                     apparatusId={s.apparatusId}
                     lines={s.lines}
-                    chain={false}
                     /* сетка перестаёт быть таблицей картинок: под курсором
                        флешка отделяется от подложки, как предмет от стола */
                     className="w-full drop-shadow-[0_12px_20px_rgba(17,17,16,0.14)] transition-transform duration-500 ease-[var(--ease-soft)] group-hover:-translate-y-1.5"

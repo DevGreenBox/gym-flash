@@ -101,7 +101,6 @@ export function SectionPage({
                           lines={
                             FALLBACK as unknown as [string, string, string]
                           }
-                          chain={false}
                           className="w-full drop-shadow-[0_10px_16px_rgba(17,17,16,0.14)] transition-transform duration-500 ease-[var(--ease-soft)] hover:-translate-y-1.5"
                         />
                       </li>

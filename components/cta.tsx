@@ -50,7 +50,6 @@ export function Cta() {
               color={CTA_COLOR}
               apparatusId="hoop"
               lines={FALLBACK as unknown as [string, string, string]}
-              chain={false}
               className="w-full drop-shadow-[0_18px_30px_rgba(17,17,16,0.16)]"
             />
           </div>

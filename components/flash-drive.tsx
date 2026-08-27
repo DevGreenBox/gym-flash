@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import {
   DriveCap,
-  DriveRing,
   КОЛПАЧОК,
   КОРПУС_D,
   ПЛАСТИНА_X,
@@ -82,7 +81,6 @@ export function FlashDrive({
   fontId,
   className,
   showLabel = true,
-  chain = true,
   priority,
   side = "front",
   back,
@@ -97,8 +95,6 @@ export function FlashDrive({
   fontId?: string;
   className?: string;
   showLabel?: boolean;
-  /** false — корпус без подвески: для миниатюр, где цепочка съедает ширину */
-  chain?: boolean;
   priority?: boolean;
   /**
    * Какую сторону показывать. Корпус один и тот же, поэтому оборот —
@@ -142,7 +138,8 @@ export function FlashDrive({
      к правому краю — на этот же сдвиг едет и группа гравировки. */
   const зеркало =
     side === "back" ? `translate(${ХОЛСТ.w} 0) scale(-1 1)` : undefined;
-  const корпусX = side === "back" ? ХОЛСТ.w - SPEC.plate : ПЛАСТИНА_X;
+  const корпусX =
+    side === "back" ? ХОЛСТ.w - ПЛАСТИНА_X - SPEC.plate : ПЛАСТИНА_X;
 
   const size = BASE_SIZE;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
@@ -169,7 +166,7 @@ export function FlashDrive({
       className={`relative isolate ${className ?? ""}`}
       style={{ aspectRatio: ХОЛСТ.w / ХОЛСТ.h }}
       role="img"
-      aria-label={`Флешка${chain ? " с кольцом" : ""}, гравировка: ${lines
+      aria-label={`Флешка, гравировка: ${lines
         .filter(Boolean)
         .join(", ")}${label ? `, предмет: ${label}` : ""}`}
     >
@@ -202,8 +199,6 @@ export function FlashDrive({
             Гравировка не зеркалится — она читается как обычно,
             поэтому её группа просто сдвинута на ту же величину. */}
         <g transform={зеркало}>
-          {chain ? <DriveRing uid={uid} /> : null}
-
           <g clipPath={`url(#${uid}-body)`}>
           {/* Анодировка: цвет под шлифовкой, снимок ложится умножением. */}
           <rect

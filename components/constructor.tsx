@@ -639,7 +639,6 @@ function DriveItem({
                 lines={shown}
                 back={item.back}
                 fontId={item.fontId}
-                chain={false}
                 side={side}
                 className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
               />
@@ -1102,7 +1101,6 @@ function DriveRail({
                   apparatusId={it.apparatusId}
                   lines={shownLines(it.lines)}
                   fontId={it.fontId}
-                  chain={false}
                   className="w-full"
                 />
                 <span

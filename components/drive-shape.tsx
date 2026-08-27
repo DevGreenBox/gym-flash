@@ -18,14 +18,19 @@ import { SPEC } from "@/lib/site";
 export const КОЛПАЧОК = 5.4;
 /** Вылет торца по горизонтали. */
 const КРАЙ = 2.6;
-const КОЛЬЦО_R = 2.3;
 const ПОЛЕ = 1;
 
-export const ПЛАСТИНА_X = 0;
+export const ПЛАСТИНА_X = ПОЛЕ;
 export const ПЛАСТИНА_Y = ПОЛЕ;
 
+/**
+ * Холст под флешку — ровно по нарисованному, поле в миллиметр
+ * со всех сторон. Раньше справа стоял запас под кольцо, и пластина
+ * съезжала из середины карточки на 2,8 мм влево — двадцатую часть
+ * ширины.
+ */
 export const ХОЛСТ = {
-  w: SPEC.plate + КОЛЬЦО_R * 2 + 1,
+  w: SPEC.plate + ПОЛЕ * 2,
   h: SPEC.plateH + ПОЛЕ * 2,
 };
 
@@ -53,29 +58,6 @@ export const КОРПУС_D = (() => {
     "Z",
   ].join(" ");
 })();
-
-/** Кольцо: продето в дальний торец, поэтому наполовину уходит под корпус. */
-export function DriveRing({ uid }: { uid: string }) {
-  return (
-    <>
-      <defs>
-        <linearGradient id={`${uid}-ring`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ededee" />
-          <stop offset="52%" stopColor="#96969a" />
-          <stop offset="100%" stopColor="#cfcfd3" />
-        </linearGradient>
-      </defs>
-      <circle
-        cx={SPEC.plate + КОЛЬЦО_R - 0.6}
-        cy={ПОЛЕ + SPEC.plateH / 2}
-        r={КОЛЬЦО_R}
-        fill="none"
-        stroke={`url(#${uid}-ring)`}
-        strokeWidth="0.75"
-      />
-    </>
-  );
-}
 
 /**
  * Чёрный колпачок — отдельная деталь, из которой выдвигается разъём.
