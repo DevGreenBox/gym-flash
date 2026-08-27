@@ -67,6 +67,7 @@ const STEPS = [
   { id: "apparatus", title: "Предмет" },
   { id: "color", title: "Оттенок" },
   { id: "back", title: "Оборот" },
+  { id: "result", title: "Результат" },
 ];
 
 /** Оборотная сторона: чертёж требует гравировку в одну, две или три строки. */
@@ -452,6 +453,13 @@ function DriveItem({
     setSide(steps[i]?.id === "back" ? "back" : "front");
   };
 
+  /* Последний шаг показывает изделие целиком — с подвеской. На остальных
+     её нет: цепочка и кольцо съедают треть ширины, а править надо
+     гравировку. Зоны нажатия там же и выключаются: холст под подвеску
+     шире, доли пластины другие, да и тыкать на витрине не во что. */
+  const итог = steps[step]?.id === "result";
+  const доли = ПЛАСТИНА_ДОЛИ(итог);
+
   const pane = (id: string) => {
     const i = stepAt(id);
     const on = step === i;
@@ -645,6 +653,7 @@ function DriveItem({
                 back={item.back}
                 fontId={item.fontId}
                 side={side}
+                chain={итог}
                 className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
               />
 
@@ -658,12 +667,13 @@ function DriveItem({
                   корпуса 50 мм, дальше Зона 1 в 32 мм, промежуток
                   и Зона 2 в 11,5 мм. На обороте зона одна — 28 мм. */}
               <div
+                hidden={итог}
                 className="absolute"
                 style={{
-                  left: `${ПЛАСТИНА_ДОЛИ.left}%`,
-                  top: `${ПЛАСТИНА_ДОЛИ.top}%`,
-                  width: `${ПЛАСТИНА_ДОЛИ.width}%`,
-                  height: `${ПЛАСТИНА_ДОЛИ.height}%`,
+                  left: `${доли.left}%`,
+                  top: `${доли.top}%`,
+                  width: `${доли.width}%`,
+                  height: `${доли.height}%`,
                 }}
               >
                 {/* строки: на лицевой Зона 1, на обороте своя зона */}
@@ -954,6 +964,46 @@ function DriveItem({
                     По флешке на каждый предмет, надпись — как у открытой.
                   </p>
                 </div>
+              </Step>
+            </div>
+
+            {/* Итог. Превью на этом шаге показывает изделие целиком —
+                с подвеской, как оно приедет; здесь рядом стоит список
+                выбранного, чтобы проверить всё одним взглядом,
+                не возвращаясь по шагам. */}
+            <div {...pane("result")}>
+              <Step note="Так флешка приедет">
+                <dl className="divide-y divide-hairline border-y border-hairline text-[0.9375rem]">
+                  {[
+                    {
+                      k: "Лицевая",
+                      v: shown.filter(Boolean).join(" · ") || "не заполнена",
+                    },
+                    { k: "Знак", v: apparatus },
+                    { k: "Оттенок", v: `${color.name} · ${color.hex}` },
+                    {
+                      k: "Оборот",
+                      v:
+                        item.back.filter((l) => l.trim()).join(" · ") ||
+                        "без гравировки",
+                    },
+                    { k: "Подвеска", v: "Кольцо с цепочкой — в комплекте" },
+                  ].map((r) => (
+                    <div
+                      key={r.k}
+                      className="flex items-baseline justify-between gap-5 py-3.5"
+                    >
+                      <dt className="shrink-0 text-[0.6875rem] font-semibold tracking-[0.14em] text-ink/65 uppercase">
+                        {r.k}
+                      </dt>
+                      <dd className="text-right">{r.v}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <p className="mt-3 text-[0.75rem] text-ink/65">
+                  Что-то не так — вернитесь на нужный шаг наверху.
+                </p>
               </Step>
             </div>
           </div>

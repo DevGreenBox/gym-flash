@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import {
+  DriveChain,
   DriveUSB,
   ОТСТУП_НАДПИСИ,
   КОРПУС_D,
@@ -97,6 +98,7 @@ export function FlashDrive({
   fontId,
   className,
   showLabel = true,
+  chain = false,
   priority,
   side = "front",
   back,
@@ -111,6 +113,8 @@ export function FlashDrive({
   fontId?: string;
   className?: string;
   showLabel?: boolean;
+  /** true — с подвеской: ушко, змейка и кольцо. Для шага «Результат». */
+  chain?: boolean;
   priority?: boolean;
   /**
    * Какую сторону показывать. Корпус один и тот же, поэтому оборот —
@@ -153,10 +157,11 @@ export function FlashDrive({
   /* Отражение корпуса. Холст шире пластины на место под кольцо,
      поэтому зеркало не только переворачивает, но и сдвигает корпус
      к правому краю — на этот же сдвиг едет и группа гравировки. */
+  const холст = ХОЛСТ(chain);
   const зеркало =
-    side === "back" ? `translate(${ХОЛСТ.w} 0) scale(-1 1)` : undefined;
+    side === "back" ? `translate(${холст.w} 0) scale(-1 1)` : undefined;
   const корпусX =
-    side === "back" ? ХОЛСТ.w - ПЛАСТИНА_X - SPEC.plate : ПЛАСТИНА_X;
+    side === "back" ? холст.w - ПЛАСТИНА_X - SPEC.plate : ПЛАСТИНА_X;
 
   const size = BASE_SIZE;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
@@ -181,9 +186,9 @@ export function FlashDrive({
   return (
     <div
       className={`relative isolate ${className ?? ""}`}
-      style={{ aspectRatio: ХОЛСТ.w / ХОЛСТ.h }}
+      style={{ aspectRatio: холст.w / холст.h }}
       role="img"
-      aria-label={`Флешка, гравировка: ${lines
+      aria-label={`Флешка${chain ? " с подвеской" : ""}, гравировка: ${lines
         .filter(Boolean)
         .join(", ")}${label ? `, предмет: ${label}` : ""}`}
     >
@@ -199,7 +204,7 @@ export function FlashDrive({
       ) : null}
 
       <svg
-        viewBox={`0 0 ${ХОЛСТ.w} ${ХОЛСТ.h}`}
+        viewBox={`0 0 ${холст.w} ${холст.h}`}
         className="absolute inset-0 size-full"
       >
         <defs>
@@ -216,6 +221,8 @@ export function FlashDrive({
             Гравировка не зеркалится — она читается как обычно,
             поэтому её группа просто сдвинута на ту же величину. */}
         <g transform={зеркало}>
+          {chain ? <DriveChain uid={uid} /> : null}
+
           {/* Разъём под оболочкой: наружу выходит только вылет слева */}
           <DriveUSB uid={uid} />
 
