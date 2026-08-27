@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Golos_Text, Neucha, Prata } from "next/font/google";
+import { Golos_Text, Playpen_Sans, Prata } from "next/font/google";
 
 import { MessengerFab } from "@/components/messenger-fab";
 import { SiteFooter } from "@/components/site-footer";
@@ -24,13 +24,20 @@ const golos = Golos_Text({
   display: "swap",
 });
 
-// Замена Segoe Print: сам он в веб не отдаётся по лицензии, а Neucha —
-// ближайший кириллический почерк того же склада: прямой, печатный, буквы
-// не связаны. Гравировка — единственное место, где он появляется.
-const neucha = Neucha({
+// Гравировка. Segoe Print с сайта убран совсем, и не только из-за лицензии:
+// он есть только на Windows, и флешка выглядела бы по-разному в зависимости
+// от того, с чего человек зашёл. Конструктор показывает будущую покупку —
+// она обязана быть одинаковой везде.
+//
+// Playpen Sans — ближайший по скелету из тех, что имеют кириллицу и живой
+// жирный: буквы прямые, не связаны, той же ширины, что на гравировке.
+// Сравнение с фотографией партии — в docs/шрифт-гравировки.md. Вес пришпилен
+// к 700: гарнитура переменная, но нужен один вес, и статический экземпляр
+// весит меньше.
+const playpen = Playpen_Sans({
   subsets: ["cyrillic", "latin"],
-  weight: ["400"],
-  variable: "--font-neucha",
+  weight: "700",
+  variable: "--font-playpen",
   display: "swap",
 });
 
@@ -95,7 +102,7 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
-      className={`${golos.variable} ${prata.variable} ${neucha.variable}`}
+      className={`${golos.variable} ${prata.variable} ${playpen.variable}`}
     >
       <body className="font-sans antialiased">
         <script
