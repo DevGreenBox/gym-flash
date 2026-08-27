@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   DriveCap,
   DriveRing,
+  КОЛПАЧОК,
+  КОРПУС_D,
   ПЛАСТИНА_X,
   ПЛАСТИНА_Y,
   ХОЛСТ,
@@ -135,6 +137,13 @@ export function FlashDrive({
     setSqueeze(Math.min(SQUEEZE, зона / w));
   }, [key, side]);
 
+  /* Отражение корпуса. Холст шире пластины на место под кольцо,
+     поэтому зеркало не только переворачивает, но и сдвигает корпус
+     к правому краю — на этот же сдвиг едет и группа гравировки. */
+  const зеркало =
+    side === "back" ? `translate(${ХОЛСТ.w} 0) scale(-1 1)` : undefined;
+  const корпусX = side === "back" ? ХОЛСТ.w - SPEC.plate : ПЛАСТИНА_X;
+
   const size = BASE_SIZE;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
   const textMid = apparatusId ? ZONE1_MID : WIDE_MID;
@@ -180,29 +189,19 @@ export function FlashDrive({
         className="absolute inset-0 size-full"
       >
         <defs>
-          {/* Капсула: торцы скруглены по половине высоты, как на чертеже.
-              Всё содержимое корпуса — металл, колпачок, гравировка —
-              обрезается по ней, поэтому колпачок повторяет скругление
-              торца, а не приставлен к нему бруском. */}
+          {/* Контур с чертежа: прямые верх и низ, торцы — эллиптические
+              дуги. Всё содержимое корпуса — металл, колпачок, гравировка —
+              обрезается по нему, поэтому колпачок повторяет форму торца. */}
           <clipPath id={`${uid}-body`}>
-            <rect
-              x={ПЛАСТИНА_X}
-              y={ПЛАСТИНА_Y}
-              width={SPEC.plate}
-              height={SPEC.plateH}
-              rx={SPEC.plateH / 2}
-            />
+            <path d={КОРПУС_D} />
           </clipPath>
         </defs>
 
         {/* Оборот — тот же корпус, отражённый: колпачок и кольцо
             меняются местами, как при повороте флешки в руке.
-            Гравировка не зеркалится — она читается как обычно. */}
-        <g
-          transform={
-            side === "back" ? `translate(${ХОЛСТ.w} 0) scale(-1 1)` : undefined
-          }
-        >
+            Гравировка не зеркалится — она читается как обычно,
+            поэтому её группа просто сдвинута на ту же величину. */}
+        <g transform={зеркало}>
           {chain ? <DriveRing uid={uid} /> : null}
 
           <g clipPath={`url(#${uid}-body)`}>
@@ -224,43 +223,43 @@ export function FlashDrive({
             style={{ mixBlendMode: "multiply" }}
           />
             <DriveCap uid={uid} />
+
+            {/* Блик и притенение — едва заметные, поверх колпачка тоже:
+                это свет на всём предмете. Основной металл даёт сам снимок
+                под цветом; сильный градиент поверх делал из корпуса
+                глянцевый пластик, поэтому здесь только намёк на свет
+                сверху и уход в тень книзу. */}
+            <defs>
+              <linearGradient id={`${uid}-sheen`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fff" stopOpacity="0.07" />
+                <stop offset="30%" stopColor="#fff" stopOpacity="0.02" />
+                <stop offset="70%" stopColor="#000" stopOpacity="0.01" />
+                <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
+              </linearGradient>
+            </defs>
+            <rect
+              x={ПЛАСТИНА_X}
+              y={ПЛАСТИНА_Y}
+              width={SPEC.plate}
+              height={SPEC.plateH}
+              fill={`url(#${uid}-sheen)`}
+            />
           </g>
         </g>
 
-        {/* Тонкая кромка корпуса — на чертеже он обведён контуром. */}
-        <rect
-          x={ПЛАСТИНА_X}
-          y={ПЛАСТИНА_Y}
-          width={SPEC.plate}
-          height={SPEC.plateH}
-          rx={SPEC.plateH / 2}
+        {/* Тонкая кромка корпуса — на чертеже он обведён контуром.
+            Отражается вместе с корпусом, иначе на обороте оставалась
+            бы висеть непарная обводка на прежнем месте. */}
+        <path
+          d={КОРПУС_D}
+          transform={зеркало}
           fill="none"
           stroke="#000"
           strokeOpacity="0.18"
           strokeWidth="0.3"
         />
 
-        <g transform={`translate(${ПЛАСТИНА_X} ${ПЛАСТИНА_Y})`}>
-      {/* Блик и притенение — едва заметные. Основной металл даёт сам
-            снимок под цветом; сильный градиент поверх делал из корпуса
-            глянцевый пластик, поэтому здесь только намёк на свет
-            сверху и уход в тень книзу. */}
-        <defs>
-          <linearGradient id={`${uid}-sheen`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fff" stopOpacity="0.07" />
-            <stop offset="30%" stopColor="#fff" stopOpacity="0.02" />
-            <stop offset="70%" stopColor="#000" stopOpacity="0.01" />
-            <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
-          </linearGradient>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width={SPEC.plate}
-          height={SPEC.plateH}
-          fill={`url(#${uid}-sheen)`}
-        />
-
+        <g transform={`translate(${корпусX} ${ПЛАСТИНА_Y})`}>
         {/* невидимый дубль для замера: всегда базовым кеглем */}
         <g
           ref={probe}
@@ -525,7 +524,11 @@ function BackEngraving({
      корпуса, толщина считается по пропорции вектора 8,33 : 1. */
   const ЛОГО_Д = 12.6;
   const ЛОГО_Т = ЛОГО_Д / (566.24 / 67.96);
-  const логоX = FIELD_R - ЛОГО_Т / 2 - 0.6;
+  /* На обороте корпус отражён — колпачок ушёл вправо, и логотип стоит
+     вплотную к нему, а не к дальнему торцу. Считаем от кромки колпачка,
+     иначе логотип ложится прямо на чёрное. */
+  const колпачокX = SPEC.plate - КОЛПАЧОК;
+  const логоX = колпачокX - ЛОГО_Т / 2 - 0.8;
 
   /* Впадина — посередине между зоной гравировки и логотипом. */
   const осьX = (FIELD_L + SPEC.backField + (логоX - ЛОГО_Т / 2)) / 2;
