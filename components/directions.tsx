@@ -18,19 +18,14 @@ const EVERY = 5000;
 
 export function Directions() {
   const rail = useRef<HTMLUListElement>(null);
-  // `scrolls: false` — лента влезла целиком, листать нечего
-  const [edge, setEdge] = useState({ start: true, end: true, scrolls: false });
+  const [edge, setEdge] = useState({ start: true, end: true });
   const [paused, setPaused] = useState(false);
 
   const measure = useCallback(() => {
     const el = rail.current;
     if (!el) return;
     const max = el.scrollWidth - el.clientWidth;
-    setEdge({
-      start: el.scrollLeft <= 4,
-      end: el.scrollLeft >= max - 4,
-      scrolls: max > 4,
-    });
+    setEdge({ start: el.scrollLeft <= 4, end: el.scrollLeft >= max - 4 });
   }, []);
 
   useEffect(() => {
@@ -88,24 +83,28 @@ export function Directions() {
             </h2>
           </div>
 
-          {/* когда листать нечего, двух погашенных кнопок в углу быть
-              не должно: это управление без управляемого */}
-          {edge.scrolls ? (
-            <div className="flex gap-2">
-              <Arrow
-                dir={-1}
-                disabled={edge.start}
-                onClick={() => step(-1)}
-                label="Назад"
-              />
-              <Arrow
-                dir={1}
-                disabled={edge.end}
-                onClick={() => step(1)}
-                label="Вперёд"
-              />
-            </div>
-          ) : null}
+          {/* Когда листать нечего, двух погашенных кнопок в углу быть
+              не должно — но условие берём из вёрстки, а не из замера.
+              Ниже `lg` карточка шире трети ленты и лента листается
+              всегда, от `lg` три карточки встают ровно по ширине.
+              Замером это решалось после гидратации: кнопки появлялись
+              задним числом, строка переносилась, и всё, что ниже,
+              съезжало вниз. Из-за этого кнопка героя не доводила
+              до конструктора — прыжок случался до сдвига. */}
+          <div className="flex gap-2 lg:hidden">
+            <Arrow
+              dir={-1}
+              disabled={edge.start}
+              onClick={() => step(-1)}
+              label="Назад"
+            />
+            <Arrow
+              dir={1}
+              disabled={edge.end}
+              onClick={() => step(1)}
+              label="Вперёд"
+            />
+          </div>
         </div>
 
         <ul
