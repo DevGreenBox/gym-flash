@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { FlashDrive } from "@/components/flash-drive";
+import { IconPicker } from "@/components/icon-picker";
 import { IncomingDraft, ShareDraft } from "@/components/share-draft";
 import {
   ApparatusIcon,
@@ -431,6 +432,7 @@ function DriveItem({
   const [focused, setFocused] = useState<number | null>(null);
   const [step, setStep] = useState(0);
   const [side, setSide] = useState<"front" | "back">("front");
+  const [picking, setPicking] = useState(false);
 
   // Список шагов у раздела свой, поэтому шаг адресуется именем, а не
   // номером: с выключенным «Предметом» номер 2 означал бы уже «Оттенок».
@@ -597,6 +599,15 @@ function DriveItem({
           ) : null}
         </div>
       </div>
+
+      {picking ? (
+        <IconPicker
+          base={base}
+          value={item.apparatusId}
+          onPick={(id) => setApparatus(item.id, id)}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
 
       <div className="grid12-lg">
         {/* Превью едет за человеком на любом экране. На телефоне это узкая
@@ -823,49 +834,25 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            {/* Выбор знака стоит прямо в подразделе, а не за кнопкой:
-                лишний щелчок перед тем же действием ничего не даёт.
-                Категории остаются — базы подарка и учёбы придут
-                разбитыми на них. */}
+            {/* Чертёж, пункт 5: выбор пиктограммы во всплывающем окне
+                из базы для этого вида флешек. Строкой чипсов это
+                не закрыть — у подарка и учёбы базы разбиты
+                на категории и знаков там будут десятки. */}
             <div {...pane("apparatus")}>
               <Step note={apparatus}>
-                {база.categories.map((c, ci) => (
-                  <div key={c.label} className={ci ? "mt-6" : ""}>
-                    {база.categories.length > 1 ? (
-                      <p className="mb-3 text-[0.6875rem] font-semibold tracking-[0.18em] text-ink/65 uppercase">
-                        {c.label}
-                      </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                      {ci === 0 ? <БезЗнака item={item} /> : null}
-                      {c.items.map((a) => {
-                        const on = a.id === item.apparatusId;
-                        return (
-                          <button
-                            key={a.id}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => setApparatus(item.id, a.id)}
-                            className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-                              on
-                                ? "border-ink text-paper"
-                                : "border-hairline text-ink/70 hover:text-ink"
-                            }`}
-                          >
-                            <ApparatusIcon id={a.id} className="size-4" />
-                            {a.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-
-                {база.categories.length === 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    <БезЗнака item={item} />
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setPicking(true)}
+                  className="inline-flex h-13 cursor-pointer items-center gap-3 rounded-pill border border-hairline px-5 text-[0.9375rem] transition-colors duration-300 hover:border-ink/40"
+                >
+                  {item.apparatusId ? (
+                    <ApparatusIcon id={item.apparatusId} className="size-5" />
+                  ) : (
+                    <Cross className="size-5 text-ink/45" />
+                  )}
+                  {apparatus}
+                  <span className="text-[0.8125rem] text-ink/65">— выбрать</span>
+                </button>
 
                 <p className="mt-3 text-[0.75rem] text-ink/65">
                   {база.categories.length
@@ -1209,20 +1196,3 @@ function Step({
   );
 }
 
-/** «Без знака»: чертёж требует вариант с пиктограммой и без в каждой базе. */
-function БезЗнака({ item }: { item: Item }) {
-  const on = item.apparatusId === null;
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={() => setApparatus(item.id, null)}
-      className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-        on ? "border-ink text-paper" : "border-hairline text-ink/70 hover:text-ink"
-      }`}
-    >
-      <Cross className="size-4" />
-      Без знака
-    </button>
-  );
-}
