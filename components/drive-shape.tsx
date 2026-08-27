@@ -179,15 +179,37 @@ export function DriveChain({ uid }: { uid: string }) {
   return (
     <>
       <defs>
-        {/* Сталь: блик по верхней трети, тень книзу — иначе металл
-            читается серой заливкой. */}
+        {/*
+          Хром, а не серая заливка. На снимке заказчика у каждой детали
+          один и тот же порядок полос: почти белый блик сверху, резкий
+          провал в тень чуть ниже середины, второй блик под ним и тёмная
+          кромка. Плавный трёхстоповый градиент давал пластмассу —
+          металл узнаётся именно по этому обрыву между полосами.
+        */}
         <linearGradient id={`${uid}-steel`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f4f4f6" />
-          <stop offset="26%" stopColor="#dcdce1" />
-          <stop offset="54%" stopColor="#8e8e95" />
-          <stop offset="78%" stopColor="#bcbcc3" />
-          <stop offset="100%" stopColor="#6f6f76" />
+          <stop offset="0%" stopColor="#8d8e96" />
+          <stop offset="10%" stopColor="#fdfdfe" />
+          <stop offset="26%" stopColor="#dfe0e5" />
+          <stop offset="42%" stopColor="#9a9ba3" />
+          <stop offset="52%" stopColor="#4e4f57" />
+          <stop offset="62%" stopColor="#6c6d75" />
+          <stop offset="78%" stopColor="#e4e5ea" />
+          <stop offset="90%" stopColor="#a8a9b1" />
+          <stop offset="100%" stopColor="#5c5d65" />
         </linearGradient>
+
+        {/* Тот же хром поперёк — для кольца и дужки: у них полосы идут
+            по окружности, а не по длине. */}
+        <linearGradient id={`${uid}-steel-x`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#6e6f78" />
+          <stop offset="16%" stopColor="#fbfbfd" />
+          <stop offset="34%" stopColor="#c3c4cb" />
+          <stop offset="50%" stopColor="#5a5b63" />
+          <stop offset="66%" stopColor="#b0b1b9" />
+          <stop offset="84%" stopColor="#f2f2f5" />
+          <stop offset="100%" stopColor="#6a6b73" />
+        </linearGradient>
+
         <clipPath id={`${uid}-coil`}>
           <rect
             x={пружинаX}
@@ -228,21 +250,34 @@ export function DriveChain({ uid }: { uid: string }) {
         rx={0.5}
         fill={`url(#${uid}-steel)`}
       />
-      <g
-        clipPath={`url(#${uid}-coil)`}
-        stroke="#55555c"
-        strokeOpacity="0.55"
-        strokeWidth="0.3"
-      >
-        {Array.from({ length: витков + 2 }, (_, i) => (
-          <line
-            key={i}
-            x1={пружинаX + шаг * i - 0.55}
-            y1={cy + 1.45}
-            x2={пружинаX + шаг * i + 0.55}
-            y2={cy - 1.45}
-          />
-        ))}
+      {/* Витки: тёмная полоса и светлый блик рядом с ней. На снимке
+          пружина читается именно чередованием, а не насечкой. */}
+      <g clipPath={`url(#${uid}-coil)`} strokeLinecap="butt">
+        {Array.from({ length: витков + 2 }, (_, i) => {
+          const x = пружинаX + шаг * i;
+          return (
+            <g key={i}>
+              <line
+                x1={x - 0.6}
+                y1={cy + 1.5}
+                x2={x + 0.6}
+                y2={cy - 1.5}
+                stroke="#31323a"
+                strokeOpacity="0.72"
+                strokeWidth="0.34"
+              />
+              <line
+                x1={x - 0.6 + 0.32}
+                y1={cy + 1.5}
+                x2={x + 0.6 + 0.32}
+                y2={cy - 1.5}
+                stroke="#ffffff"
+                strokeOpacity="0.6"
+                strokeWidth="0.2"
+              />
+            </g>
+          );
+        })}
       </g>
 
       {обойма(обойма1X)}
@@ -258,7 +293,7 @@ export function DriveChain({ uid }: { uid: string }) {
               ${дужкаX + ДУЖКА_Д * 0.28} ${cy + ДУЖКА_В / 2}
               ${дужкаX} ${cy} Z`}
         fill="none"
-        stroke={`url(#${uid}-steel)`}
+        stroke={`url(#${uid}-steel-x)`}
         strokeWidth="0.85"
       />
 
@@ -268,7 +303,7 @@ export function DriveChain({ uid }: { uid: string }) {
         cy={cy}
         r={КОЛЬЦО_R}
         fill="none"
-        stroke={`url(#${uid}-steel)`}
+        stroke={`url(#${uid}-steel-x)`}
         strokeWidth={КОЛЬЦО_Т}
       />
       <circle
@@ -276,9 +311,29 @@ export function DriveChain({ uid }: { uid: string }) {
         cy={cy}
         r={КОЛЬЦО_R - КОЛЬЦО_Т}
         fill="none"
-        stroke={`url(#${uid}-steel)`}
+        stroke={`url(#${uid}-steel-x)`}
         strokeWidth={КОЛЬЦО_Т}
-        strokeOpacity="0.85"
+      />
+      {/* Ложбинка между витками: по ней кольцо и читается двойным */}
+      <circle
+        cx={кольцоX}
+        cy={cy}
+        r={КОЛЬЦО_R - КОЛЬЦО_Т / 2}
+        fill="none"
+        stroke="#31323a"
+        strokeOpacity="0.45"
+        strokeWidth="0.16"
+      />
+      {/* Блик по верхней дуге — то, чем полированная сталь отличается
+          от матовой: свет собирается в одну короткую полосу. */}
+      <path
+        d={`M ${кольцоX - КОЛЬЦО_R * 0.72} ${cy - КОЛЬЦО_R * 0.7}
+            a ${КОЛЬЦО_R} ${КОЛЬЦО_R} 0 0 1 ${КОЛЬЦО_R * 1.15} ${-КОЛЬЦО_R * 0.24}`}
+        fill="none"
+        stroke="#fff"
+        strokeOpacity="0.75"
+        strokeWidth="0.3"
+        strokeLinecap="round"
       />
       {/* стык витка — по нему кольцо и опознаётся */}
       <path
