@@ -14,7 +14,6 @@
 
   --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-prata), Georgia, serif;
-  --font-hand: var(--font-playpen), cursive;
 
   --radius-pill: 999px;
   --radius-card: 28px;
@@ -589,12 +588,6 @@ html {
     0 0 0 3px var(--color-paper),
     0 0 0 4px var(--color-ink);
   cursor: grab;
-}
-
-/* Гравировка: Playpen Sans — одна и та же на всех устройствах. */
-.engraving {
-  font-family: var(--font-hand);
-  font-weight: 700;
 }
 
 /* Печать накладной: на бумаге не нужны ни шапка, ни подвал, ни кнопки. */
