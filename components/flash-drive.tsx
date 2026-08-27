@@ -227,10 +227,9 @@ export function FlashDrive({
                 >
                   {line}
                 </text>
-                {/* Штрих поверх заливки добирает вес: у замены штрих тоньше,
-                    чем у Segoe Print Bold, а лазер на металле оставляет
-                    сплошной след. `paint-order` кладёт обводку под заливку,
-                    иначе она съедала бы внутренние просветы букв. */}
+                {/* Вес даёт само начертание: на Windows это настоящий
+                    Segoe Print Bold, у замены браузер утолщает сам.
+                    Ручная обводка тут была бы двойной жирностью. */}
                 <text
                   x={0}
                   y={y}
@@ -239,10 +238,6 @@ export function FlashDrive({
                   dominantBaseline="middle"
                   fill="#fff"
                   fillOpacity="0.96"
-                  stroke="#fff"
-                  strokeOpacity="0.96"
-                  strokeWidth={size * 0.05}
-                  style={{ paintOrder: "stroke" }}
                 >
                   {line}
                 </text>
