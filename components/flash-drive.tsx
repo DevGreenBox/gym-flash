@@ -101,17 +101,22 @@ export function FlashDrive({
    * и подгонка не сходилась бы.
    */
   const probe = useRef<SVGGElement>(null);
-  const [scale, setScale] = useState(1);
+  const [squeeze, setSqueeze] = useState(SQUEEZE);
   const key = `${lines.join("|")}|${font.id}`;
 
   useEffect(() => {
     // `getBBox()` возвращает габарит до собственного преобразования группы,
-    // поэтому сжатие учитываем сами: на пластину ляжет вдвое уже
-    const w = (probe.current?.getBBox().width ?? 0) * SQUEEZE;
-    setScale(w > SPEC.textField ? SPEC.textField / w : 1);
+    // поэтому меряем набор в натуральную ширину и сжимаем сами
+    const w = probe.current?.getBBox().width ?? 0;
+    if (!w) return;
+    /* Чертёж: «шрифт дополнительно сжимается до размера в 32 мм».
+       Именно сжимается — кегль не трогаем. Уменьшать кегль нельзя:
+       три строки обязаны занимать те же 15 мм по высоте, а строка
+       с длинной фамилией — стоять вровень с остальными. */
+    setSqueeze(Math.min(SQUEEZE, SPEC.textField / w));
   }, [key]);
 
-  const size = BASE_SIZE * scale;
+  const size = BASE_SIZE;
   const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
   const textMid = apparatusId ? ZONE1_MID : WIDE_MID;
 
@@ -122,12 +127,12 @@ export function FlashDrive({
   const rows = filled.length ? filled : [""];
   const firstY = MID_Y - ((rows.length - 1) * LINE_STEP) / 2;
 
-  /* Короб знака: ширина Зоны 2 — потолок. С подписью знак уступает ей
-     низ зоны, без подписи занимает зону целиком. */
-  const ICON_BOX = showLabel ? SPEC.iconField * 0.75 : SPEC.iconField;
-  const ICON_Y = showLabel
-    ? FIELD_T + 0.6
-    : MID_Y - ICON_BOX / 2;
+  /* Зона 2 — короб 11,5 × 15, и по чертежу в него целиком помещается
+     пиктограмма. На изделии знак идёт вместе со своей подписью одним
+     клеймом, поэтому и здесь они делят один короб: знак сверху во всю
+     ширину зоны, подпись под ним. Без подписи знак встаёт по центру. */
+  const ICON_BOX = SPEC.iconField - 1.4;
+  const ICON_Y = showLabel ? FIELD_T + 0.5 : MID_Y - ICON_BOX / 2;
   const m = chain ? measures.full : measures.solo;
   const src = chain ? "/drive/base.png" : "/drive/base-solo.png";
   const mask = chain ? "/drive/plate-mask.png" : "/drive/plate-mask-solo.png";
@@ -210,7 +215,7 @@ export function FlashDrive({
             поэтому центровка от него не съезжает. */}
         <g
           style={{ fontFamily: font.css, fontWeight: font.weight }}
-          transform={`translate(${textMid} 0) scale(${SQUEEZE} 1)`}
+          transform={`translate(${textMid} 0) scale(${squeeze} 1)`}
         >
           {rows.map((line, i) => {
             const y = firstY + i * LINE_STEP;
