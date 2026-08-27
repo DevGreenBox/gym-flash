@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { FlashDrive } from "@/components/flash-drive";
+import { IconPicker } from "@/components/icon-picker";
 import { IncomingDraft, ShareDraft } from "@/components/share-draft";
 import {
   ApparatusIcon,
@@ -113,7 +114,7 @@ export function Constructor({
   heading = "Соберите комплект на сезон",
   headingAs: Heading = "h2",
   priority = false,
-  apparatus: withApparatus = true,
+  base = "gymnastics",
 }: {
   /** «комплект на сезон» — про гимнастику; в учёбе и подарке заголовок свой */
   heading?: string;
@@ -126,13 +127,11 @@ export function Constructor({
    */
   priority?: boolean;
   /**
-   * Показывать ли шаг «Предмет». Конструктор на сайте один, а разделы
-   * у него разные: знак вида нужен только художественной гимнастике.
-   * Хранилище при этом не трогаем — набор, собранный в гимнастике,
-   * не должен обнуляться от захода в «Учёбу»; здесь знак просто
-   * не показывается и не уезжает в заявку.
+   * Какая база знаков открывается в окне выбора: ключ из `ICON_BASES`.
+   * Чертёж требует выбор пиктограммы во всех конструкторах, но базы
+   * у видов флешек разные.
    */
-  apparatus?: boolean;
+  base?: string;
 } = {}) {
   const { items, trash } = useEngraving();
   const [added, setAdded] = useState<null | string>(null);
@@ -181,9 +180,7 @@ export function Constructor({
       addToCart({
         colorId: it.colorId,
         customHex: it.customHex,
-        // где шага «Предмет» нет, знак не уезжает и в заявку: человек
-        // его не выбирал и на его флешке он не появится
-        apparatusId: withApparatus ? it.apparatusId : null,
+        apparatusId: it.apparatusId,
         fontId: it.fontId,
         lines: shownLines(it.lines),
         qty,
@@ -347,11 +344,11 @@ export function Constructor({
           onDuplicate={() => setPickedId(duplicateItem(active.id))}
           onRemove={() => drop(active.id)}
           onRemoveItem={drop}
-          withApparatus={withApparatus}
+          base={base}
           onBuildSet={addSet}
-          /* комплект на сезон — это флешка на каждый предмет; там,
-             где предметов нет, кнопке нечего собирать */
-          canBuildSet={withApparatus && !!active.lines[0].trim()}
+          /* комплект на сезон — это флешка на каждый предмет,
+             и предметы есть только у гимнастики */
+          canBuildSet={base === "gymnastics" && !!active.lines[0].trim()}
           order={order}
         />
 
@@ -398,7 +395,7 @@ function DriveItem({
   canBuildSet,
   order,
   priority,
-  withApparatus,
+  base,
 }: {
   item: Item;
   n: number;
@@ -414,18 +411,17 @@ function DriveItem({
   order: React.ReactNode;
   /** превью — первое изображение страницы, грузить его вперёд остальных */
   priority: boolean;
-  /** показывать ли шаг «Предмет» и знак вида на самой флешке */
-  withApparatus: boolean;
+  /** база знаков для окна выбора */
+  base: string;
 }) {
   const total = items.length;
   const [focused, setFocused] = useState<number | null>(null);
   const [step, setStep] = useState(0);
+  const [picking, setPicking] = useState(false);
 
   // Список шагов у раздела свой, поэтому шаг адресуется именем, а не
   // номером: с выключенным «Предметом» номер 2 означал бы уже «Оттенок».
-  const steps = withApparatus
-    ? STEPS
-    : STEPS.filter((s) => s.id !== "apparatus");
+  const steps = STEPS;
   const stepAt = (id: string) => steps.findIndex((s) => s.id === id);
 
   /** Общая обвязка панели шага: связь с вкладкой, видимость и сторона входа. */
@@ -446,10 +442,9 @@ function DriveItem({
     };
   };
 
-  /** Знак вида: там, где шага «Предмет» нет, флешка идёт без него. */
-  const apparatusId = withApparatus ? item.apparatusId : null;
+  /** Знак вида — как выбран; чертёж требует шаг во всех конструкторах. */
+  const apparatusId = item.apparatusId;
   const fieldRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const apparatusRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // Идентификаторы связывают вкладку с её панелью. У каждой позиции свои:
@@ -501,39 +496,6 @@ function DriveItem({
   const apparatus = apparatusLabel(apparatusId);
 
   /**
-   * Группа предметов объявлена радиогруппой — значит и вести себя должна
-   * как радиогруппа: в табе она одна остановка, внутри ходят стрелками.
-   * Семь отдельных остановок таба на одном выборе — это обещание,
-   * которого разметка не выполняла.
-   */
-  const onApparatusKey = (e: React.KeyboardEvent) => {
-    const step: Record<string, number> = {
-      ArrowRight: 1,
-      ArrowDown: 1,
-      ArrowLeft: -1,
-      ArrowUp: -1,
-    };
-    const d = step[e.key];
-    if (d === undefined && e.key !== "Home" && e.key !== "End") return;
-    e.preventDefault();
-
-    // восьмой вариант — «без знака», он идёт последним в ряду
-    const ids: (string | null)[] = [...APPARATUS.map((a) => a.id), null];
-    const now = ids.indexOf(item.apparatusId);
-    const next =
-      e.key === "Home"
-        ? 0
-        : e.key === "End"
-          ? ids.length - 1
-          : (now + d + ids.length) % ids.length;
-
-    setApparatus(item.id, ids[next]);
-    apparatusRef.current
-      ?.querySelectorAll<HTMLButtonElement>('[role="radio"]')
-      [next]?.focus();
-  };
-
-  /**
    * Тычок по знаку на пластине ставит следующий предмет по кругу — и только
    * его: цвет корпуса остаётся выбранный. Перебирая знаки, человек смотрит
    * на знаки, и подмена оттенка под каждым нажатием сбивала бы уже
@@ -574,7 +536,7 @@ function DriveItem({
             </span>
           </span>
           <span className="text-[1.0625rem] font-medium">
-            {withApparatus ? `${apparatus} · ` : ""}
+            {apparatus} ·{" "}
             {color.name}
           </span>
         </p>
@@ -601,6 +563,15 @@ function DriveItem({
           ) : null}
         </div>
       </div>
+
+      {picking ? (
+        <IconPicker
+          base={base}
+          value={item.apparatusId}
+          onPick={(id) => setApparatus(item.id, id)}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
 
       <div className="grid12-lg">
         {/* Превью едет за человеком на любом экране. На телефоне это узкая
@@ -686,7 +657,6 @@ function DriveItem({
               onPick={onPick}
               onAdd={onAdd}
               onRemove={onRemoveItem}
-              withApparatus={withApparatus}
             />
           </div>
 
@@ -788,65 +758,31 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            {/* в разделах без предметов шага нет вовсе: скрытая панель
-                всё равно осталась бы в обходе с клавиатуры */}
-            {withApparatus ? (
-              <div {...pane("apparatus")}>
+            {/* Чертёж: выбор пиктограммы во всплывающем окне из базы
+                для этого вида флешек. Строкой чипсов это не сделать —
+                у подарка и учёбы базы разбиты на категории и знаков
+                там будут десятки. */}
+            <div {...pane("apparatus")}>
               <Step note={apparatus}>
-                <div
-                  ref={apparatusRef}
-                  role="radiogroup"
-                  aria-label="Предмет"
-                  onKeyDown={onApparatusKey}
-                  className="flex flex-wrap gap-2"
+                <button
+                  type="button"
+                  onClick={() => setPicking(true)}
+                  className="inline-flex h-13 cursor-pointer items-center gap-3 rounded-pill border border-hairline px-5 text-[0.9375rem] transition-colors duration-300 hover:border-ink/40"
                 >
-                  {APPARATUS.map((a) => {
-                    const active = a.id === item.apparatusId;
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        tabIndex={active ? 0 : -1}
-                        onClick={() => setApparatus(item.id, a.id)}
-                        className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-                          active
-                            ? "border-ink text-paper"
-                            : "border-hairline text-ink/70 hover:text-ink"
-                        }`}
-                      >
-                        <ApparatusIcon id={a.id} className="size-4" />
-                        {a.label}
-                      </button>
-                    );
-                  })}
-
-                  {/* Без знака: остаются три строки на всю пластину. Нужно
-                      тем, кому знак предмета не нужен — учёба, подарок. */}
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={item.apparatusId === null}
-                    tabIndex={item.apparatusId === null ? 0 : -1}
-                    onClick={() => setApparatus(item.id, null)}
-                    className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
-                      item.apparatusId === null
-                        ? "border-ink text-paper"
-                        : "border-hairline text-ink/70 hover:text-ink"
-                    }`}
-                  >
-                    <Cross className="size-4" />
-                    Без знака
-                  </button>
-                </div>
+                  {item.apparatusId ? (
+                    <ApparatusIcon id={item.apparatusId} className="size-5" />
+                  ) : (
+                    <Cross className="size-5 text-ink/45" />
+                  )}
+                  {apparatus}
+                  <span className="text-[0.8125rem] text-ink/65">— выбрать</span>
+                </button>
                 <p className="mt-3 text-[0.75rem] text-ink/65">
                   Цвет подставляется под предмет. Без знака остаются только три
                   строки.
                 </p>
               </Step>
-              </div>
-            ) : null}
+            </div>
             <div {...pane("color")}>
               <Step note={`${color.name} · ${color.hex}`}>
                 {/* Полоса вместо кружков: цвет выбирается движением, как в пипетке.
@@ -942,15 +878,12 @@ function DriveRail({
   onPick,
   onAdd,
   onRemove,
-  withApparatus,
 }: {
   items: Item[];
   activeId: string;
   onPick: (id: string) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
-  /** знак вида на окнах ленты — там же, где и на самой флешке */
-  withApparatus: boolean;
 }) {
   const rail = useRef<HTMLUListElement>(null);
   const [edge, setEdge] = useState({ start: true, end: true, scrolls: false });
@@ -1042,11 +975,7 @@ function DriveRail({
                 type="button"
                 onClick={() => onPick(it.id)}
                 aria-current={on}
-                aria-label={
-                  withApparatus
-                    ? `Флешка ${i + 1}: ${apparatusLabel(it.apparatusId)}, ${c.name}`
-                    : `Флешка ${i + 1}: ${c.name}`
-                }
+                aria-label={`Флешка ${i + 1}: ${apparatusLabel(it.apparatusId)}, ${c.name}`}
                 /* активное окно — кольцо, как у свотча цвета: на сайте
                    одно выделение на элемент, и это оно */
                 className={`grid w-full cursor-pointer gap-2 rounded-field px-3 pt-4 pb-2.5 transition-shadow duration-240 ease-[var(--ease-soft)] ${
@@ -1060,7 +989,7 @@ function DriveRail({
               >
                 <FlashDrive
                   color={c.hex}
-                  apparatusId={withApparatus ? it.apparatusId : null}
+                  apparatusId={it.apparatusId}
                   lines={shownLines(it.lines)}
                   fontId={it.fontId}
                   chain={false}
@@ -1072,9 +1001,7 @@ function DriveRail({
                   className={`hidden truncate text-[0.6875rem] lg:block ${on ? "text-ink" : "text-ink/80"}`}
                 >
                   {String(i + 1).padStart(2, "0")}{" "}
-                  {withApparatus
-                    ? apparatusLabel(it.apparatusId)
-                    : colorById(it.colorId)?.name ?? ""}
+                  {apparatusLabel(it.apparatusId)}
                 </span>
               </button>
 
