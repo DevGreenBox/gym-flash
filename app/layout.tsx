@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Caveat, Golos_Text, Prata } from "next/font/google";
 
+import { MessengerFab } from "@/components/messenger-fab";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { site } from "@/lib/site";
@@ -116,6 +117,7 @@ export default function RootLayout({
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />
+        <MessengerFab />
       </body>
     </html>
   );
