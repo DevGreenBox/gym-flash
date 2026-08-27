@@ -112,6 +112,7 @@ export function FlashDrive({
    * если мерить видимый текст, каждое уменьшение меняло бы следующий замер
    * и подгонка не сходилась бы.
    */
+  const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const probe = useRef<SVGGElement>(null);
   const [squeeze, setSqueeze] = useState(SQUEEZE);
   const key = `${lines.join("|")}|${(back ?? []).join("|")}|${side}|${font.id}`;
@@ -141,12 +142,13 @@ export function FlashDrive({
   const rows = filled.length ? filled : [""];
   const firstY = MID_Y - ((rows.length - 1) * LINE_STEP) / 2;
 
-  /* Зона 2 — короб 11,5 × 15, и по чертежу в него целиком помещается
-     пиктограмма. На изделии знак идёт вместе со своей подписью одним
-     клеймом, поэтому и здесь они делят один короб: знак сверху во всю
-     ширину зоны, подпись под ним. Без подписи знак встаёт по центру. */
-  const ICON_BOX = SPEC.iconField - 1.4;
-  const ICON_Y = showLabel ? FIELD_T + 0.5 : MID_Y - ICON_BOX / 2;
+  /* Зона 2 — короб 11,5 × 15. Чертёж прямо оговаривает: пиктограмма
+     «не всегда имеет размеры 15 × 11,5, часто она бывает меньше»,
+     и к контуру она только привязана — сам контур не гравируется.
+     На фотографиях партии знак занимает примерно треть высоты корпуса,
+     под ним подпись; пара стоит по центру короба. */
+  const ICON_BOX = showLabel ? 6.2 : 8.4;
+  const ICON_Y = showLabel ? FIELD_T + 1.5 : MID_Y - ICON_BOX / 2;
   const m = chain ? measures.full : measures.solo;
   const src = chain ? "/drive/base.png" : "/drive/base-solo.png";
   const mask = chain ? "/drive/plate-mask.png" : "/drive/plate-mask-solo.png";
@@ -209,6 +211,26 @@ export function FlashDrive({
         className="pointer-events-none absolute"
         style={plate}
       >
+        {/* Блик и притенение — едва заметные. Основной металл даёт сам
+            снимок под цветом; сильный градиент поверх делал из корпуса
+            глянцевый пластик, поэтому здесь только намёк на свет
+            сверху и уход в тень книзу. */}
+        <defs>
+          <linearGradient id={`${uid}-sheen`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.07" />
+            <stop offset="30%" stopColor="#fff" stopOpacity="0.02" />
+            <stop offset="70%" stopColor="#000" stopOpacity="0.01" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.06" />
+          </linearGradient>
+        </defs>
+        <rect
+          x="0"
+          y="0"
+          width={SPEC.plate}
+          height={SPEC.plateH}
+          fill={`url(#${uid}-sheen)`}
+        />
+
         {/* невидимый дубль для замера: всегда базовым кеглем */}
         <g
           ref={probe}
@@ -309,6 +331,7 @@ function LabelPlate({
    * показывал, что всё влезает, а на пластине не влезало —
    * `getBBox()` возвращает габарит до собственного поворота группы.
    */
+  const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const probe = useRef<SVGGElement>(null);
   const [m, setM] = useState({ fit: 1, ascent: LABEL_SIZE * 0.72 });
   const key = `${label}|${font.id}`;
@@ -329,7 +352,7 @@ function LabelPlate({
   const step = size * 1.05;
   /* Нижний край зоны минус запас: подпись стоит под знаком и не выходит
      за поле гравировки, сколько бы строк в ней ни было. */
-  const first = SPEC.plateH - (SPEC.plateH - SPEC.fieldH) / 2 - 1.1 - (lines.length - 1) * step;
+  const first = SPEC.plateH - (SPEC.plateH - SPEC.fieldH) / 2 - 2.2 - (lines.length - 1) * step;
 
   const rows = (fill: string, opacity: string, dy: number) =>
     lines.map((line, i) => (
@@ -427,7 +450,7 @@ function FrontEngraving({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="#fff"
-              fillOpacity="0.96"
+              fillOpacity="1"
             >
               {line}
             </text>
@@ -464,7 +487,6 @@ function BackEngraving({
   squeeze: number;
   font: ReturnType<typeof fontById>;
 }) {
-  const uid = useId().replace(/[^a-zA-Z0-9-]/g, "");
   const зонаЦентр = FIELD_L + SPEC.backField / 2;
   const свободно = FIELD_R - (FIELD_L + SPEC.backField);
   const осьX = FIELD_L + SPEC.backField + свободно * 0.32;
@@ -472,37 +494,28 @@ function BackEngraving({
 
   return (
     <g>
-      {/* Впадина под палец — ею флешку выдвигают. Это не гравировка
-          и не кружок: металл вдавлен, поэтому верх внутри в тени,
-          а низ ловит свет. Снаружи по нижнему краю идёт тонкий блик —
-          кромка, поднятая вокруг углубления. */}
-      <defs>
-        <radialGradient id={`${uid}-dimple`} cx="50%" cy="34%" r="72%">
-          <stop offset="0%" stopColor="#000" stopOpacity="0.30" />
-          <stop offset="52%" stopColor="#000" stopOpacity="0.13" />
-          <stop offset="86%" stopColor="#fff" stopOpacity="0.05" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0.30" />
-        </radialGradient>
-      </defs>
-
-      <circle cx={осьX} cy={MID_Y} r={DIMPLE_R} fill={`url(#${uid}-dimple)`} />
-      {/* верхняя дуга — тень от кромки, нижняя — блик на дне */}
-      <path
-        d={`M ${осьX - DIMPLE_R * 0.94} ${MID_Y - DIMPLE_R * 0.2}
-            A ${DIMPLE_R} ${DIMPLE_R} 0 0 1 ${осьX + DIMPLE_R * 0.94} ${MID_Y - DIMPLE_R * 0.2}`}
-        fill="none"
-        stroke="#000"
-        strokeOpacity="0.34"
-        strokeWidth="0.28"
-        strokeLinecap="round"
+      {/* Впадина под палец — ею флешку выдвигают.
+          На фотографии изделия она читается тонким светлым кольцом:
+          анодированный металл матовый, глубокой тени в углублении
+          не даёт. Внутри — та же плоскость чуть темнее, по нижней
+          дуге кольцо ярче: туда попадает свет. */}
+      <circle
+        cx={осьX}
+        cy={MID_Y}
+        r={DIMPLE_R}
+        fill="#000"
+        fillOpacity="0.05"
+        stroke="#fff"
+        strokeOpacity="0.42"
+        strokeWidth="0.22"
       />
       <path
-        d={`M ${осьX - DIMPLE_R * 0.9} ${MID_Y + DIMPLE_R * 0.3}
-            A ${DIMPLE_R} ${DIMPLE_R} 0 0 0 ${осьX + DIMPLE_R * 0.9} ${MID_Y + DIMPLE_R * 0.3}`}
+        d={`M ${осьX - DIMPLE_R * 0.86} ${MID_Y + DIMPLE_R * 0.5}
+            A ${DIMPLE_R} ${DIMPLE_R} 0 0 0 ${осьX + DIMPLE_R * 0.86} ${MID_Y + DIMPLE_R * 0.5}`}
         fill="none"
         stroke="#fff"
         strokeOpacity="0.5"
-        strokeWidth="0.3"
+        strokeWidth="0.24"
         strokeLinecap="round"
       />
 
@@ -538,12 +551,12 @@ function BackEngraving({
             <g key={i}>
               <text
                 x={0}
-                y={y + 0.24}
+                y={y + 0.18}
                 fontSize={size}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#000"
-                fillOpacity="0.34"
+                fillOpacity="0.26"
               >
                 {line}
               </text>
@@ -554,7 +567,7 @@ function BackEngraving({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#fff"
-                fillOpacity="0.96"
+                fillOpacity="1"
               >
                 {line}
               </text>
