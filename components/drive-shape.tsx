@@ -159,55 +159,74 @@ export function DriveChain({ uid }: { uid: string }) {
 
   /* Витки пружины: наклонные штрихи поперёк капсулы. Ровные вертикальные
      читались бы насечкой, а на снимке видно именно спираль. */
-  const витков = Math.round(ПРУЖИНА / 0.95);
+  const витков = Math.round(ПРУЖИНА / 0.62);
   const шаг = ПРУЖИНА / витков;
 
   const обойма = (x: number) => (
-    <rect
-      x={x}
-      y={cy - 1.5}
-      width={ОБОЙМА}
-      height={3}
-      rx={0.45}
-      fill={`url(#${uid}-steel)`}
-      stroke="#5f5f66"
-      strokeOpacity="0.35"
-      strokeWidth="0.12"
-    />
+    <g key={x}>
+      <rect
+        x={x}
+        y={cy - 1.5}
+        width={ОБОЙМА}
+        height={3}
+        rx={0.45}
+        fill={`url(#${uid}-steel)`}
+        stroke="#4a4b53"
+        strokeOpacity="0.4"
+        strokeWidth="0.12"
+      />
+      <rect
+        x={x}
+        y={cy - 1.5}
+        width={ОБОЙМА}
+        height={3}
+        rx={0.45}
+        fill={`url(#${uid}-gloss)`}
+      />
+    </g>
   );
 
   return (
     <>
       <defs>
         {/*
-          Хром, а не серая заливка. На снимке заказчика у каждой детали
-          один и тот же порядок полос: почти белый блик сверху, резкий
-          провал в тень чуть ниже середины, второй блик под ним и тёмная
-          кромка. Плавный трёхстоповый градиент давал пластмассу —
-          металл узнаётся именно по этому обрыву между полосами.
+          Круглая проволока, освещённая сверху. Верхняя кромка темнее,
+          в верхней трети — узкий блик, дальше тон ровно уходит в тень.
+          Прежний вариант держал вторую светлую полосу внизу: так
+          выглядит гранёный профиль, а на снимке проволока круглая.
         */}
         <linearGradient id={`${uid}-steel`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#8d8e96" />
-          <stop offset="10%" stopColor="#fdfdfe" />
-          <stop offset="26%" stopColor="#dfe0e5" />
-          <stop offset="42%" stopColor="#9a9ba3" />
-          <stop offset="52%" stopColor="#4e4f57" />
-          <stop offset="62%" stopColor="#6c6d75" />
-          <stop offset="78%" stopColor="#e4e5ea" />
-          <stop offset="90%" stopColor="#a8a9b1" />
+          <stop offset="0%" stopColor="#9fa0a8" />
+          <stop offset="16%" stopColor="#fafbfc" />
+          <stop offset="30%" stopColor="#e2e3e8" />
+          <stop offset="52%" stopColor="#b0b1b9" />
+          <stop offset="74%" stopColor="#83848c" />
+          <stop offset="100%" stopColor="#5a5b63" />
+        </linearGradient>
+
+        {/*
+          Плоская проволока кольца: у неё блик в середине сечения,
+          а тёмное — по обеим кромкам. Тем и отличается от круглой.
+        */}
+        <linearGradient id={`${uid}-steel-x`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6c6d75" />
+          <stop offset="18%" stopColor="#eceef2" />
+          <stop offset="44%" stopColor="#fbfbfd" />
+          <stop offset="68%" stopColor="#bdbec6" />
+          <stop offset="88%" stopColor="#84858d" />
           <stop offset="100%" stopColor="#5c5d65" />
         </linearGradient>
 
-        {/* Тот же хром поперёк — для кольца и дужки: у них полосы идут
-            по окружности, а не по длине. */}
-        <linearGradient id={`${uid}-steel-x`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6e6f78" />
-          <stop offset="16%" stopColor="#fbfbfd" />
-          <stop offset="34%" stopColor="#c3c4cb" />
-          <stop offset="50%" stopColor="#5a5b63" />
-          <stop offset="66%" stopColor="#b0b1b9" />
-          <stop offset="84%" stopColor="#f2f2f5" />
-          <stop offset="100%" stopColor="#6a6b73" />
+        {/*
+          Продольный блик. На снимке по всей подвеске идёт одна светлая
+          полоса — она и связывает витки пружины в единую деталь, иначе
+          они распадаются на отдельные штрихи.
+        */}
+        <linearGradient id={`${uid}-gloss`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0" />
+          <stop offset="17%" stopColor="#fff" stopOpacity="0.9" />
+          <stop offset="31%" stopColor="#fff" stopOpacity="0" />
+          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
 
         <clipPath id={`${uid}-coil`}>
@@ -240,6 +259,14 @@ export function DriveChain({ uid }: { uid: string }) {
         rx={0.45}
         fill={`url(#${uid}-steel)`}
       />
+      <rect
+        x={стерженьX}
+        y={cy - 0.45}
+        width={СТЕРЖЕНЬ + 0.4}
+        height={0.9}
+        rx={0.45}
+        fill={`url(#${uid}-gloss)`}
+      />
 
       {/* Пружина: капсула плюс наклонные витки */}
       <rect
@@ -250,35 +277,35 @@ export function DriveChain({ uid }: { uid: string }) {
         rx={0.5}
         fill={`url(#${uid}-steel)`}
       />
-      {/* Витки: тёмная полоса и светлый блик рядом с ней. На снимке
-          пружина читается именно чередованием, а не насечкой. */}
+      {/* Витки: тонкие тёмные линии между оборотами. Толстые полосы
+          превращали пружину в винтовую резьбу — на снимке навивка
+          мелкая и общий тон светлый. */}
       <g clipPath={`url(#${uid}-coil)`} strokeLinecap="butt">
         {Array.from({ length: витков + 2 }, (_, i) => {
           const x = пружинаX + шаг * i;
           return (
-            <g key={i}>
-              <line
-                x1={x - 0.6}
-                y1={cy + 1.5}
-                x2={x + 0.6}
-                y2={cy - 1.5}
-                stroke="#31323a"
-                strokeOpacity="0.72"
-                strokeWidth="0.34"
-              />
-              <line
-                x1={x - 0.6 + 0.32}
-                y1={cy + 1.5}
-                x2={x + 0.6 + 0.32}
-                y2={cy - 1.5}
-                stroke="#ffffff"
-                strokeOpacity="0.6"
-                strokeWidth="0.2"
-              />
-            </g>
+            <line
+              key={i}
+              x1={x - 0.42}
+              y1={cy + 1.5}
+              x2={x + 0.42}
+              y2={cy - 1.5}
+              stroke="#3a3b43"
+              strokeOpacity="0.5"
+              strokeWidth="0.17"
+            />
           );
         })}
       </g>
+      {/* Общий блик поверх витков — им пружина и держится как одна деталь */}
+      <rect
+        x={пружинаX}
+        y={cy - 1.35}
+        width={ПРУЖИНА}
+        height={2.7}
+        rx={0.5}
+        fill={`url(#${uid}-gloss)`}
+      />
 
       {обойма(обойма1X)}
       {обойма(обойма2X)}
@@ -320,9 +347,9 @@ export function DriveChain({ uid }: { uid: string }) {
         cy={cy}
         r={КОЛЬЦО_R - КОЛЬЦО_Т / 2}
         fill="none"
-        stroke="#31323a"
-        strokeOpacity="0.45"
-        strokeWidth="0.16"
+        stroke="#3a3b43"
+        strokeOpacity="0.55"
+        strokeWidth="0.14"
       />
       {/* Блик по верхней дуге — то, чем полированная сталь отличается
           от матовой: свет собирается в одну короткую полосу. */}
