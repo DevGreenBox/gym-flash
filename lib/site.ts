@@ -84,6 +84,8 @@ export const CATEGORIES = [
     href: "/gymnastics",
     label: "Для художественной гимнастики",
     note: "Вид видно по знаку на лицевой стороне, переворачивать не нужно",
+    /** чем этот конструктор отличается от соседних — для экрана выбора */
+    difference: "Три строки и знак вида: обруч, мяч, булавы, лента, скакалка, Б/П или знак для тренировок.",
     preview: {
       colorId: "red",
       apparatusId: "hoop" as string | null,
@@ -94,6 +96,7 @@ export const CATEGORIES = [
     href: "/study",
     label: "Для учёбы",
     note: "Имя и класс на корпусе — видно, чья это флешка",
+    difference: "Три строки без знака вида: фамилия, имя и класс.",
     preview: {
       colorId: "blue",
       apparatusId: null as string | null,
@@ -104,6 +107,7 @@ export const CATEGORIES = [
     href: "/gift",
     label: "Памятный подарок",
     note: "Дата и повод остаются на металле",
+    difference: "Три строки без знака вида: имя, повод и дата.",
     preview: {
       colorId: "bronze",
       apparatusId: null as string | null,

@@ -33,8 +33,11 @@ export function Cta() {
             <p className="mt-4 max-w-[34ch] text-[1.0625rem] leading-relaxed text-ink/70">
               Имя, предмет и цвет — сразу видно, как получится.
             </p>
+            {/* не в конкретный конструктор, а на экран выбора:
+                конструкторов несколько, и человек, дочитавший «Доставку»,
+                не обязан попадать именно в гимнастический */}
             <Link
-              href="/#constructor"
+              href="/constructors"
               className="group mt-8 inline-flex h-13 items-center gap-2.5 rounded-pill bg-ink px-7 text-[0.9375rem] font-medium text-paper transition-transform duration-150 hover:-translate-y-px"
             >
               Открыть конструктор
