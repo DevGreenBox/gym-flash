@@ -16,7 +16,7 @@ import {
   Plus,
 } from "@/components/icons";
 import { addToCart, totalQty, useCart } from "@/lib/cart";
-import { ПЛАСТИНА_ДОЛИ } from "@/components/drive-shape";
+import { КОЛПАЧОК, ПЛАСТИНА_ДОЛИ } from "@/components/drive-shape";
 import type { Item } from "@/lib/engraving";
 import {
   addItem,
@@ -85,6 +85,13 @@ const BACK_FIELDS = [
  */
 /** Левый край поля гравировки в миллиметрах: общий для обеих сторон. */
 const ZONE_L = (SPEC.plate - SPEC.field) / 2;
+/**
+ * Левый край зоны нажатия на лицевой. По чертежу поле гравировки
+ * начинается в 2,5 мм от края корпуса, а колпачок закрывает первые
+ * 5,4 мм — подсветка строки залезала под чёрное. Упираем её в кромку
+ * колпачка: под ним нажимать всё равно не во что.
+ */
+const ZONE_L_ЛИЦО = Math.max(ZONE_L, КОЛПАЧОК);
 
 const TILE =
   "shrink-0 snap-start last:snap-end w-[calc((100%-24px)/4)] lg:w-[calc((100%-36px)/4)] xl:w-[calc((100%-48px)/5)]";
@@ -665,8 +672,8 @@ function DriveItem({
                 <div
                   className="absolute flex flex-col"
                   style={{
-                    left: `${(ZONE_L / SPEC.plate) * 100}%`,
-                    width: `${((side === "back" ? SPEC.backField : SPEC.textField) / SPEC.plate) * 100}%`,
+                    left: `${((side === "back" ? ZONE_L : ZONE_L_ЛИЦО) / SPEC.plate) * 100}%`,
+                    width: `${((side === "back" ? SPEC.backField : SPEC.textField - (ZONE_L_ЛИЦО - ZONE_L)) / SPEC.plate) * 100}%`,
                     top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
                     height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
                   }}
