@@ -182,6 +182,8 @@ export const SPEC = {
   gap: 1.5,
   /** Зона 2 — пиктограмма с подписью */
   iconField: 11.5,
+  /** оборотная сторона: левая зона гравировки */
+  backField: 28,
   lines: 3,
   charsPerLine: 14,
 };

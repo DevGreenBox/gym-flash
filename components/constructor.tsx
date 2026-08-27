@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { FlashDrive } from "@/components/flash-drive";
-import { IconPicker } from "@/components/icon-picker";
 import { IncomingDraft, ShareDraft } from "@/components/share-draft";
 import {
   ApparatusIcon,
@@ -33,6 +32,7 @@ import {
 import { FALLBACK, shownLines } from "@/lib/engraving-view";
 import {
   APPARATUS,
+  ICON_BASES,
   COLORS,
   DEFAULT_COLOR_FOR,
   SPEC,
@@ -417,7 +417,7 @@ function DriveItem({
   const total = items.length;
   const [focused, setFocused] = useState<number | null>(null);
   const [step, setStep] = useState(0);
-  const [picking, setPicking] = useState(false);
+  const [side, setSide] = useState<"front" | "back">("front");
 
   // Список шагов у раздела свой, поэтому шаг адресуется именем, а не
   // номером: с выключенным «Предметом» номер 2 означал бы уже «Оттенок».
@@ -441,6 +441,8 @@ function DriveItem({
       }`,
     };
   };
+
+  const база = ICON_BASES[base] ?? ICON_BASES.gymnastics;
 
   /** Знак вида — как выбран; чертёж требует шаг во всех конструкторах. */
   const apparatusId = item.apparatusId;
@@ -564,15 +566,6 @@ function DriveItem({
         </div>
       </div>
 
-      {picking ? (
-        <IconPicker
-          base={base}
-          value={item.apparatusId}
-          onPick={(id) => setApparatus(item.id, id)}
-          onClose={() => setPicking(false)}
-        />
-      ) : null}
-
       <div className="grid12-lg">
         {/* Превью едет за человеком на любом экране. На телефоне это узкая
             полоса под шапкой: без неё фамилию вводишь вслепую — поля ниже,
@@ -603,13 +596,17 @@ function DriveItem({
                 lines={shown}
                 fontId={item.fontId}
                 chain={false}
+                side={side}
                 className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
               />
 
               {/* Гравировка кликабельна: тычешь в строку на металле —
                   попадаешь в её поле, тычешь в знак — в выбор предмета.
-                  Поле в фокусе подсвечивает свою строку, и наоборот. */}
+                  Поле в фокусе подсвечивает свою строку, и наоборот.
+                  На обороте попадать не во что: его гравировку ещё
+                  определяет заказчик. */}
               <div
+                hidden={side === "back"}
                 className="absolute"
                 style={{
                   left: `${measures.solo.plate.left}%`,
@@ -647,6 +644,28 @@ function DriveItem({
                   ) : null}
                 </div>
               </div>
+            </div>
+
+            {/* Обе стороны: человек должен видеть, что получит целиком,
+                а не только лицо. */}
+            <div
+              role="group"
+              aria-label="Сторона флешки"
+              className="mt-3 flex justify-center gap-1"
+            >
+              {(["front", "back"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSide(s)}
+                  aria-pressed={side === s}
+                  className={`tap cursor-pointer rounded-pill px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-300 ${
+                    side === s ? "bg-ink text-paper" : "text-ink/65 hover:text-ink"
+                  }`}
+                >
+                  {s === "front" ? "Лицевая" : "Оборотная"}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -758,28 +777,54 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            {/* Чертёж: выбор пиктограммы во всплывающем окне из базы
-                для этого вида флешек. Строкой чипсов это не сделать —
-                у подарка и учёбы базы разбиты на категории и знаков
-                там будут десятки. */}
+            {/* Выбор знака стоит прямо в подразделе, а не за кнопкой:
+                лишний щелчок перед тем же действием ничего не даёт.
+                Категории остаются — базы подарка и учёбы придут
+                разбитыми на них. */}
             <div {...pane("apparatus")}>
               <Step note={apparatus}>
-                <button
-                  type="button"
-                  onClick={() => setPicking(true)}
-                  className="inline-flex h-13 cursor-pointer items-center gap-3 rounded-pill border border-hairline px-5 text-[0.9375rem] transition-colors duration-300 hover:border-ink/40"
-                >
-                  {item.apparatusId ? (
-                    <ApparatusIcon id={item.apparatusId} className="size-5" />
-                  ) : (
-                    <Cross className="size-5 text-ink/45" />
-                  )}
-                  {apparatus}
-                  <span className="text-[0.8125rem] text-ink/65">— выбрать</span>
-                </button>
+                {база.categories.map((c, ci) => (
+                  <div key={c.label} className={ci ? "mt-6" : ""}>
+                    {база.categories.length > 1 ? (
+                      <p className="mb-3 text-[0.6875rem] font-semibold tracking-[0.18em] text-ink/65 uppercase">
+                        {c.label}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      {ci === 0 ? <БезЗнака item={item} /> : null}
+                      {c.items.map((a) => {
+                        const on = a.id === item.apparatusId;
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setApparatus(item.id, a.id)}
+                            className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
+                              on
+                                ? "border-ink text-paper"
+                                : "border-hairline text-ink/70 hover:text-ink"
+                            }`}
+                          >
+                            <ApparatusIcon id={a.id} className="size-4" />
+                            {a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {база.categories.length === 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    <БезЗнака item={item} />
+                  </div>
+                ) : null}
+
                 <p className="mt-3 text-[0.75rem] text-ink/65">
-                  Цвет подставляется под предмет. Без знака остаются только три
-                  строки.
+                  {база.categories.length
+                    ? "Цвет подставляется под предмет. Без знака остаются только три строки."
+                    : "База знаков для этого вида флешек ещё не собрана — ждём файлы и разбивку по категориям."}
                 </p>
               </Step>
             </div>
@@ -1083,5 +1128,23 @@ function Step({
       ) : null}
       {children}
     </div>
+  );
+}
+
+/** «Без знака»: чертёж требует вариант с пиктограммой и без в каждой базе. */
+function БезЗнака({ item }: { item: Item }) {
+  const on = item.apparatusId === null;
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => setApparatus(item.id, null)}
+      className={`chip inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border px-3.5 text-[0.8125rem] transition-colors duration-300 ${
+        on ? "border-ink text-paper" : "border-hairline text-ink/70 hover:text-ink"
+      }`}
+    >
+      <Cross className="size-4" />
+      Без знака
+    </button>
   );
 }

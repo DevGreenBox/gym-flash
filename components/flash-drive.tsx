@@ -75,6 +75,7 @@ export function FlashDrive({
   showLabel = true,
   chain = true,
   priority,
+  side = "front",
 }: {
   color: string;
   /** null — гравировка без знака: поле текста занимает всю пластину */
@@ -87,6 +88,12 @@ export function FlashDrive({
   /** false — корпус без подвески: для миниатюр, где цепочка съедает ширину */
   chain?: boolean;
   priority?: boolean;
+  /**
+   * Какую сторону показывать. Корпус один и тот же, поэтому оборот —
+   * это тот же снимок, отражённый по горизонтали: колпачок уходит
+   * на другой край, как и на изделии. Гравировка у сторон разная.
+   */
+  side?: "front" | "back";
 }) {
   const font = fontById(fontId);
 
@@ -169,13 +176,15 @@ export function FlashDrive({
         fill
         priority={priority}
         sizes="(max-width: 768px) 90vw, 640px"
-        className="object-contain"
+        className={`object-contain ${side === "back" ? "-scale-x-100" : ""}`}
       />
 
       {/* цвет корпуса — только по пластине, режимом умножения */}
       <span
         aria-hidden
-        className="drive-tint pointer-events-none absolute inset-0 mix-blend-multiply"
+        className={`drive-tint pointer-events-none absolute inset-0 mix-blend-multiply ${
+          side === "back" ? "-scale-x-100" : ""
+        }`}
         style={{
           background: tint(color),
           maskImage: `url(${mask})`,
@@ -210,48 +219,20 @@ export function FlashDrive({
           ))}
         </g>
 
-        {/* Сжатие по горизонтали на 50 % — требование чертежа: так набрана
-            гравировка на производстве. Сжимаем группу вокруг середины зоны,
-            поэтому центровка от него не съезжает. */}
-        <g
-          style={{ fontFamily: font.css, fontWeight: font.weight }}
-          transform={`translate(${textMid} 0) scale(${squeeze} 1)`}
-        >
-          {rows.map((line, i) => {
-            const y = firstY + i * LINE_STEP;
-            return (
-              <g key={i}>
-                <text
-                  x={0}
-                  y={y + 0.24}
-                  fontSize={size}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#000"
-                  fillOpacity="0.34"
-                >
-                  {line}
-                </text>
-                {/* Вес даёт само начертание: на Windows это настоящий
-                    Segoe Print Bold, у замены браузер утолщает сам.
-                    Ручная обводка тут была бы двойной жирностью. */}
-                <text
-                  x={0}
-                  y={y}
-                  fontSize={size}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#fff"
-                  fillOpacity="0.96"
-                >
-                  {line}
-                </text>
-              </g>
-            );
-          })}
-        </g>
+        {side === "front" ? (
+          <FrontEngraving
+            rows={rows}
+            firstY={firstY}
+            size={size}
+            squeeze={squeeze}
+            textMid={textMid}
+            font={font}
+          />
+        ) : (
+          <BackEngraving font={font} />
+        )}
 
-        {apparatusId ? (
+        {side === "front" && apparatusId ? (
           <>
             {/* Знак и подпись стоят одним столбиком: знак 7,2 мм, под ним
                 1,2 мм воздуха и строка. Раньше знак был крупнее, а подпись
@@ -281,7 +262,7 @@ export function FlashDrive({
           </>
         ) : null}
 
-        {apparatusId && showLabel && label ? (
+        {side === "front" && apparatusId && showLabel && label ? (
           <LabelPlate label={label} font={font} />
         ) : null}
       </svg>
@@ -387,5 +368,145 @@ function LabelPlate({
         {rows("#fff", "0.96", 0)}
       </g>
     </>
+  );
+}
+
+/** Надпись лицевой стороны: Зона 1, сжатие 50 %, центровка по зоне. */
+function FrontEngraving({
+  rows,
+  firstY,
+  size,
+  squeeze,
+  textMid,
+  font,
+}: {
+  rows: string[];
+  firstY: number;
+  size: number;
+  squeeze: number;
+  textMid: number;
+  font: ReturnType<typeof fontById>;
+}) {
+  return (
+    <g
+      style={{ fontFamily: font.css, fontWeight: font.weight }}
+      transform={`translate(${textMid} 0) scale(${squeeze} 1)`}
+    >
+      {rows.map((line, i) => {
+        const y = firstY + i * LINE_STEP;
+        return (
+          <g key={i}>
+            <text
+              x={0}
+              y={y + 0.24}
+              fontSize={size}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#000"
+              fillOpacity="0.34"
+            >
+              {line}
+            </text>
+            <text
+              x={0}
+              y={y}
+              fontSize={size}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#fff"
+              fillOpacity="0.96"
+            >
+              {line}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * Оборотная сторона.
+ *
+ * Постоянные элементы взяты с фотографий заказчика: ось поворотного
+ * механизма кружком и логотип у колпачка. Переменная часть — левая
+ * зона 28 мм по чертежу; её содержимое заказчик ещё определяет,
+ * поэтому здесь она пока пустая, а не заполнена выдумкой.
+ *
+ * Центровка та же, что на лицевой, но зона прижата к левому краю
+ * поля гравировки — как требует чертёж.
+ */
+function BackEngraving({ font }: { font: ReturnType<typeof fontById> }) {
+  const зонаЛ = FIELD_L;
+  const зонаП = FIELD_L + SPEC.backField;
+  const осьX = зонаП + (FIELD_R - зонаП) * 0.36;
+  const логоX = FIELD_R - 4.6;
+
+  return (
+    <g>
+      {/* ось поворотного механизма: на изделии это заклёпка */}
+      <circle
+        cx={осьX}
+        cy={MID_Y}
+        r={2.1}
+        fill="none"
+        stroke="#fff"
+        strokeOpacity="0.5"
+        strokeWidth="0.35"
+      />
+
+      {/* логотип у колпачка — он на обороте всегда */}
+      <g transform={`translate(${логоX} ${MID_Y})`}>
+        <text
+          x={0}
+          y={-0.9}
+          fontSize={1.9}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          fillOpacity="0.9"
+          style={{ fontFamily: "var(--font-sans)", fontWeight: 700, letterSpacing: "0.04em" }}
+        >
+          PERSONAL
+        </text>
+        <text
+          x={0}
+          y={1.3}
+          fontSize={1.9}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          fillOpacity="0.9"
+          style={{ fontFamily: "var(--font-sans)", fontWeight: 700, letterSpacing: "0.04em" }}
+        >
+          FLASH
+        </text>
+      </g>
+
+      {/* левая зона 28 мм — место под гравировку оборота */}
+      <rect
+        x={зонаЛ}
+        y={FIELD_T}
+        width={SPEC.backField}
+        height={SPEC.fieldH}
+        fill="none"
+        stroke="#fff"
+        strokeOpacity="0.18"
+        strokeDasharray="0.8 0.8"
+        strokeWidth="0.2"
+      />
+      <text
+        x={зонаЛ + SPEC.backField / 2}
+        y={MID_Y}
+        fontSize={2.1}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#fff"
+        fillOpacity="0.5"
+        style={{ fontFamily: font.css, fontWeight: font.weight }}
+      >
+        гравировка оборота
+      </text>
+    </g>
   );
 }
