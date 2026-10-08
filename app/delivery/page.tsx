@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PickupMap } from "@/components/pickup-map";
 import { SectionPage } from "@/components/section-page";
 import { SECTIONS } from "@/lib/content";
 import { sectionMeta } from "@/lib/meta";
@@ -11,6 +12,18 @@ export const metadata: Metadata = sectionMeta(section);
 export default function Page() {
   return (
     <SectionPage section={section}>
+      {/* самовывоз — правка заказчика от 08.10: адрес и карта */}
+      <section className="section">
+        <div className="shell">
+          <h2 className="text-[clamp(1.5rem,3vw,2.2rem)] leading-[1.08] font-normal tracking-[-0.02em]">
+            Самовывоз
+          </h2>
+          <div className="mt-[clamp(28px,3.5vw,52px)] md:max-w-[720px]">
+            <PickupMap />
+          </div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="shell">
           <h2 className="text-[clamp(1.5rem,3vw,2.2rem)] leading-[1.08] font-normal tracking-[-0.02em]">

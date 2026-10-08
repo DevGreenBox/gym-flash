@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { FlashDrive } from "@/components/flash-drive";
+import { DrivePair, DriveSummary } from "@/components/drive-pair";
 import { ArrowRight, Cross, Minus, Plus } from "@/components/icons";
 import type { Order } from "@/components/invoice";
 import { Invoice } from "@/components/invoice";
@@ -17,18 +17,20 @@ import {
   updateLines,
   useCart,
 } from "@/lib/cart";
-import { invoiceNumber, quote } from "@/lib/delivery";
+import { DeliveryPicker } from "@/components/delivery-picker";
 import {
-  apparatusLabel,
-  FORMS_ARE_MOCKED,
-  SPEC,
-  fontById,
-  resolveColor,
-} from "@/lib/site";
+  EMPTY_DELIVERY,
+  invoiceNumber,
+  type Delivery,
+  type Quote,
+} from "@/lib/delivery";
+import { FORMS_ARE_MOCKED, SPEC, resolveColor } from "@/lib/site";
 
 export default function CartPage() {
   const items = useCart();
   const [order, setOrder] = useState<Order | null>(null);
+  const [delivery, setDelivery] = useState<Delivery>(EMPTY_DELIVERY);
+  const [расчёт, setРасчёт] = useState<Quote | null>(null);
   const [sending, setSending] = useState(false);
   const count = totalQty(items);
 
@@ -85,7 +87,9 @@ export default function CartPage() {
           Соберите флешку в конструкторе.
         </p>
         <Link
-          href="/#constructor"
+          /* конструктора на главной больше нет: экран выбора ведёт
+             в тот, что нужен — гимнастика, учёба или подарок */
+          href="/constructors"
           className="mt-9 inline-flex h-12 items-center gap-2.5 rounded-pill bg-ink px-6 text-[0.875rem] font-medium text-paper transition-transform duration-150 hover:-translate-y-px"
         >
           К конструктору
@@ -136,8 +140,7 @@ export default function CartPage() {
                 date: now,
                 name: String(data.name ?? ""),
                 phone: String(data.phone ?? ""),
-                city: String(data.city ?? ""),
-                comment: String(data.comment ?? ""),
+                delivery,
                 items,
               };
               // TODO(client): адрес почты и приём заявок
@@ -150,24 +153,57 @@ export default function CartPage() {
               Оформление
             </p>
 
-            <Field name="name" label="Имя" required />
+            {/* правка заказчика от 08.10: «Фамилия и имя» вместо «Имя»,
+                город ушёл в доставку — он нужен только СДЭК */}
+            <Field name="name" label="Фамилия и имя" required />
             <Field name="phone" label="Телефон" type="tel" required />
-            <Field name="city" label="Город доставки" required />
-            <label className="field block">
-              <span className="text-[0.6875rem] font-semibold tracking-[0.14em] text-ink/65 uppercase">
-                Комментарий
-              </span>
-              <textarea
-                name="comment"
-                rows={2}
-                className="mt-2 w-full resize-none border-b border-hairline bg-transparent pb-2.5 text-[1.0625rem] outline-none"
-              />
-            </label>
-
+            <DeliveryPicker
+              value={delivery}
+              onChange={setDelivery}
+              count={count}
+              result={расчёт}
+              onResult={setРасчёт}
+            />
+            {/* Итоги — сразу за доставкой (правка заказчика от 08.10:
+                комментария больше нет, оплата «при получении» снята).
+                «Итого» появляется, когда доставка выбрана или посчитана. */}
             <div className="space-y-1.5 border-t border-hairline pt-5 text-[0.8125rem]">
               <Row k="Флешек" v={String(count)} />
               <Row k="Стоимость" v="уточняется" muted />
-              <DeliveryRow count={count} />
+              <Row
+                k="Доставка"
+                v={
+                  delivery.method === "pickup"
+                    ? "самовывоз"
+                    : расчёт
+                      ? расчёт.ok
+                        ? `${расчёт.rub} ₽`
+                        : расчёт.reason
+                      : "рассчитайте выше"
+                }
+                muted={delivery.method === "cdek" && !расчёт?.ok}
+              />
+              {delivery.method === "pickup" || расчёт ? (
+                <div className="flex justify-between border-t border-hairline pt-2.5 text-[0.9375rem] font-medium">
+                  <span>Итого</span>
+                  {/* TODO(client): цена флешки — тогда итог сложится
+                      из стоимости и доставки сам */}
+                  <span className="text-ink/65">уточняется</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Согласия — обязательные: без них заявка не уходит.
+                TODO(client): тексты политики обработки персональных данных
+                и публичной оферты — тогда названия станут ссылками. */}
+            <div className="space-y-3">
+              <Согласие>
+                Я даю согласие на обработку моих персональных данных
+                на условиях Политики обработки персональных данных.
+              </Согласие>
+              <Согласие>
+                Я принимаю условия публичной оферты (договора купли-продажи).
+              </Согласие>
             </div>
 
             <button
@@ -186,34 +222,27 @@ export default function CartPage() {
 }
 
 /**
- * Строка заявки. Надпись правится на месте: в комплекте из семи флешек
- * опечатка в одной не должна означать пересборку всего заказа.
+ * Строка заявки — как предпросмотр в конструкторе (эскиз заказчика
+ * от 08.10): обе стороны флешки сразу и список выбранного. Надпись
+ * правится на месте: в комплекте из семи флешек опечатка в одной
+ * не должна означать пересборку всего заказа.
  */
 function CartRow({ item }: { item: CartItem }) {
   const [edit, setEdit] = useState(false);
   const color = resolveColor(item.colorId, item.customHex);
-  const apparatus = apparatusLabel(item.apparatusId);
 
   return (
-    <li className="flex flex-wrap items-center gap-5 border-t border-hairline py-6">
-      {/* на телефоне превью узкое: при 200 px рядом с ним не оставалось
-          места под надпись, и строка разваливалась на четыре этажа */}
+    <li className="grid gap-5 border-t border-hairline py-6 sm:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] sm:items-center">
       <div
-        className="w-[112px] shrink-0 rounded-field px-3 py-4 sm:w-[200px] sm:px-4 sm:py-5"
+        className="rounded-field px-3 py-2"
         style={{
           background: `color-mix(in oklab, ${color.hex} 12%, var(--color-paper))`,
         }}
       >
-        <FlashDrive
-          color={color.hex}
-          apparatusId={item.apparatusId}
-          lines={item.lines}
-          fontId={item.fontId}
-          className="w-full"
-        />
+        <DrivePair item={item} />
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         {edit ? (
           <div className="flex flex-wrap gap-3">
             {item.lines.map((line, i) => (
@@ -234,33 +263,20 @@ function CartRow({ item }: { item: CartItem }) {
               </label>
             ))}
           </div>
-        ) : (
-          <p className="text-[1.0625rem] leading-snug">
-            {item.lines.filter(Boolean).join(" · ")}
-          </p>
-        )}
+        ) : null}
 
-        {/* на телефоне кнопка съезжает под состав строкой ниже: без
-            вертикального шага она прилипала к нему вплотную */}
-        <p className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-2 text-[0.8125rem] text-ink/70">
-          <span>
-            {color.name}
-            {` · ${apparatus.toLowerCase()}`}
-            {` · ${fontById(item.fontId).label.toLowerCase()}`}
-          </span>
+        <DriveSummary item={item} className={edit ? "mt-4" : ""} />
+
+        {/* правка надписи, количество и удаление — одной строкой под списком */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setEdit((v) => !v)}
-            className="tap draw-line cursor-pointer"
+            className="tap draw-line cursor-pointer text-[0.8125rem] text-ink/70"
           >
             {edit ? "Готово" : "Изменить надпись"}
           </button>
-        </p>
-      </div>
-
-      {/* количество и удаление идут одной строкой: на телефоне она своя,
-          на широком экране встаёт в общий ряд */}
-      <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
+          <div className="flex items-center gap-3">
         <div className="inline-flex h-10 items-center gap-1 rounded-pill border border-hairline px-1.5">
           <button
             type="button"
@@ -291,6 +307,8 @@ function CartRow({ item }: { item: CartItem }) {
         >
           <Cross className="size-4" />
         </button>
+          </div>
+        </div>
       </div>
     </li>
   );
@@ -346,18 +364,18 @@ function Field({
   );
 }
 
-/** Доставку считает `lib/delivery.ts`; пока нет тарифов — говорит почему. */
-function DeliveryRow({ count }: { count: number }) {
-  const [city, setCity] = useState("");
-  useEffect(() => {
-    const el = document.querySelector<HTMLInputElement>('input[name="city"]');
-    if (!el) return;
-    const on = () => setCity(el.value);
-    el.addEventListener("input", on);
-    return () => el.removeEventListener("input", on);
-  }, []);
-  const d = quote(city, count);
-  return <Row k="Доставка" v={d.ok ? `${d.rub} ₽` : d.reason} muted={!d.ok} />;
+/** Обязательная галочка согласия: подпись — вся строка, не только квадрат. */
+function Согласие({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 text-[0.8125rem] leading-snug text-ink/80">
+      <input
+        type="checkbox"
+        required
+        className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--color-ink)]"
+      />
+      <span>{children}</span>
+    </label>
+  );
 }
 
 function Row({ k, v, muted }: { k: string; v: string; muted?: boolean }) {

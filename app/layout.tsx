@@ -41,9 +41,9 @@ const playpen = Playpen_Sans({
   display: "swap",
 });
 
-const title = `${site.name} — именные флешки для художественной гимнастики`;
+const title = `${site.name} — именные флешки`;
 const description =
-  "Металлическая флешка с лазерной гравировкой: фамилия, имя, год и знак предмета. Семь цветов корпуса, кольцо с карабином, изготовление от одного дня. Ростов-на-Дону, доставка по России.";
+  "Металлическая флешка с лазерной гравировкой: фамилия, имя, год и знак предмета. Семь цветов корпуса, кольцо с карабином, изготовление за 1–2 рабочих дня. Ростов-на-Дону, доставка по России.";
 
 export const metadata: Metadata = {
   // TODO(client): боевой домен — от него считаются абсолютные адреса картинок
@@ -89,6 +89,7 @@ const ORGANIZATION = {
   "@type": "Organization",
   name: site.name,
   legalName: site.legal,
+  taxID: site.inn,
   url: "https://personal-flash.ru",
   email: site.email,
   telephone: site.phoneHref.replace("tel:", ""),

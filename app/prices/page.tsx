@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SectionPage } from "@/components/section-page";
 import { SECTIONS } from "@/lib/content";
 import { sectionMeta } from "@/lib/meta";
-import { FONTS, SPEC, mm } from "@/lib/site";
+import { SPEC, mm } from "@/lib/site";
 
 const section = SECTIONS.prices;
 
@@ -15,17 +15,17 @@ const known = [
   { k: "Поле гравировки", v: `${mm(SPEC.field)} × ${mm(SPEC.fieldH)}` },
   { k: "Поле текста", v: `${mm(SPEC.textField)}, ${SPEC.lines} строки` },
   { k: "Поле знака", v: mm(SPEC.iconField) },
-  { k: "Шрифт гравировки", v: FONTS[0].label },
   { k: "Корпус", v: "Анодированный металл, 7 цветов" },
   { k: "Крепление", v: "Кольцо с карабином" },
+  // объём и срок — от заказчика (08.10), как в частых вопросах
+  {
+    k: "Объём памяти",
+    v: "128 МБ — для тренировок и выступлений, 32 ГБ — для учёбы и подарков",
+  },
+  { k: "Срок изготовления", v: "1–2 рабочих дня" },
 ];
 
-const unknown = [
-  "Цена за штуку",
-  "Минимальный заказ",
-  "Объём памяти",
-  "Срок изготовления",
-];
+const unknown = ["Цена за штуку", "Минимальный заказ"];
 
 export default function Page() {
   return (

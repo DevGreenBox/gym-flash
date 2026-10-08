@@ -12,7 +12,15 @@ import {
   ХОЛСТ,
 } from "@/components/drive-shape";
 import { apparatusShape } from "@/components/icons";
-import { APPARATUS, SPEC, SQUEEZE, fontById } from "@/lib/site";
+import { logoArt } from "@/lib/logos";
+import { signArt } from "@/lib/signs";
+import {
+  APPARATUS,
+  PREVIEW_SIGNS,
+  SPEC,
+  SQUEEZE,
+  fontById,
+} from "@/lib/site";
 
 /**
  * Флешка — снимок базовой модели (`public/drive/*.png`) плюс гравировка
@@ -102,6 +110,7 @@ export function FlashDrive({
   priority,
   side = "front",
   back,
+  backLogo,
 }: {
   color: string;
   /** null — гравировка без знака: поле текста занимает всю пластину */
@@ -109,11 +118,13 @@ export function FlashDrive({
   lines: readonly [string, string, string];
   /** строки оборотной стороны; показываются при side="back" */
   back?: readonly [string, string, string];
+  /** логотип оборота из базы — встаёт вместо строк, по центру зоны */
+  backLogo?: string | null;
   /** гарнитура гравировки; по умолчанию рукописная, как в текущих партиях */
   fontId?: string;
   className?: string;
   showLabel?: boolean;
-  /** true — с подвеской: ушко, змейка и кольцо. Для шага «Результат». */
+  /** true — с подвеской: ушко, змейка и кольцо. Для «Предпросмотра». */
   chain?: boolean;
   priority?: boolean;
   /**
@@ -164,7 +175,10 @@ export function FlashDrive({
     side === "back" ? холст.w - ПЛАСТИНА_X - SPEC.plate : ПЛАСТИНА_X;
 
   const size = BASE_SIZE;
-  const label = APPARATUS.find((a) => a.id === apparatusId)?.label ?? "";
+  // знаки учёбы и подарка — только для превью на главной, см. PREVIEW_SIGNS
+  const label =
+    [...APPARATUS, ...PREVIEW_SIGNS].find((a) => a.id === apparatusId)
+      ?.label ?? "";
   const textMid = apparatusId ? ZONE1_MID : WIDE_MID;
 
   /* Пустые строки в раскладке не участвуют: чертёж требует центровать
@@ -180,6 +194,8 @@ export function FlashDrive({
      и к контуру она только привязана — сам контур не гравируется.
      На фотографиях партии знак занимает примерно треть высоты корпуса,
      под ним подпись; пара стоит по центру короба. */
+  /* Пиктограмма заказчика файлом — если она есть у этого знака */
+  const art = side === "front" ? signArt(apparatusId) : null;
   const ICON_BOX = showLabel ? 6.2 : 8.4;
   const ICON_Y = showLabel ? FIELD_T + 1.5 : MID_Y - ICON_BOX / 2;
 
@@ -313,10 +329,23 @@ export function FlashDrive({
             size={size}
             squeeze={squeeze}
             font={font}
+            logo={backLogo ?? null}
           />
         )}
 
-        {side === "front" && apparatusId ? (
+        {side === "front" && art ? (
+          /* Пиктограмма заказчика — готовым растром, вместе со своей
+             подписью и тенью гравировки. Рамка файла и есть Зона 2:
+             11,5 × 15 мм, правым краем по полю гравировки. */
+          <image
+            href={art.png}
+            x={ZONE2_L + art.box.x * SPEC.iconField}
+            y={FIELD_T + art.box.y * SPEC.fieldH}
+            width={art.box.w * SPEC.iconField}
+            height={art.box.h * SPEC.fieldH}
+            preserveAspectRatio="none"
+          />
+        ) : side === "front" && apparatusId ? (
           <>
             {/* Знак и подпись стоят одним столбиком: знак 7,2 мм, под ним
                 1,2 мм воздуха и строка. Раньше знак был крупнее, а подпись
@@ -346,7 +375,7 @@ export function FlashDrive({
           </>
         ) : null}
 
-        {side === "front" && apparatusId && showLabel && label ? (
+        {side === "front" && apparatusId && !art && showLabel && label ? (
             <LabelPlate label={label} font={font} />
           ) : null}
         </g>
@@ -529,25 +558,39 @@ function BackEngraving({
   size,
   squeeze,
   font,
+  logo,
 }: {
   rows: string[];
   firstY: number;
   size: number;
   squeeze: number;
   font: ReturnType<typeof fontById>;
+  /** логотип из базы: зона одна, поэтому он встаёт вместо строк */
+  logo: string | null;
 }) {
+  const картинка = logoArt(logo);
   const зонаЦентр = FIELD_L + SPEC.backField / 2;
 
-  /* Логотип на изделии стоит вертикально, у самого колпачка, справа
-     от впадины: строка развёрнута на четверть оборота по часовой,
-     разъём USB оказывается внизу. Задаётся длиной вдоль высоты
-     корпуса, толщина считается по пропорции вектора 8,33 : 1. */
-  const ЛОГО_Д = 12.6;
-  const ЛОГО_Т = ЛОГО_Д / (566.24 / 67.96);
+  /* Логотип для флешки — файл заказчика «Лого Personal Flash FINAL
+     for FLASH.pdf» от 08.10 (`public/logo-flash-white.svg`, собирает
+     `scripts/prepare-logo.py`). Строчный — для шапки сайта: так
+     распределил заказчик.
+
+     В PDF знак стоит на листе в натуральную величину, так и ставим:
+     размер — это `viewBox` файла в пунктах, переведённый в миллиметры
+     (знак 4,97 × 8,99 мм плюс полуштрих по краям). Развёрнут на 180°
+     относительно файла — правка заказчика от 08.10: строки читаются
+     сверху вниз, разъём USB внизу. Стоит у разъёма, справа от впадины. */
+  const ПТ = 25.4 / 72;
+  const ЛОГО_Т = 14.31 * ПТ;
+  const ЛОГО_Д = 25.7 * ПТ;
   /* На обороте корпус отражён — разъём ушёл вправо, и логотип стоит
-     с той же стороны, у ближнего к нему торца. Отступ тот же, что
-     у надписи на лицевой. */
-  const логоX = SPEC.plate - ОТСТУП_НАДПИСИ - ЛОГО_Т / 2 - 0.8;
+     с той же стороны. Правый край — по краю поля гравировки, как
+     Зона 2 на лицевой (зелёная линия через углы корпуса): поле —
+     внутренняя граница. Внешняя — не ближе 1 мм к краю корпуса:
+     на высоте углов знака нос оболочки стоит на 49,6 мм, до края
+     остаётся 2,1. */
+  const логоX = FIELD_R - ЛОГО_Т / 2;
 
   /* Впадина — посередине между зоной гравировки и логотипом. */
   const осьX = (FIELD_L + SPEC.backField + (логоX - ЛОГО_Т / 2)) / 2;
@@ -579,54 +622,68 @@ function BackEngraving({
         strokeLinecap="round"
       />
 
-      {/* Логотип у колпачка — настоящий вектор бренда. Белая копия
-          лежит отдельным файлом: `currentColor` во внешнем SVG
-          не работает, а гравировка на металле светлая. */}
+      {/* Логотип у колпачка — вектор заказчика. Белая копия лежит
+          отдельным файлом: `currentColor` во внешнем SVG не работает,
+          а гравировка на металле светлая. */}
       <image
-        href="/logo-white.svg"
-        x={логоX - ЛОГО_Д / 2}
-        y={MID_Y - ЛОГО_Т / 2}
-        width={ЛОГО_Д}
-        height={ЛОГО_Т}
+        href="/logo-flash-white.svg"
+        x={логоX - ЛОГО_Т / 2}
+        y={MID_Y - ЛОГО_Д / 2}
+        width={ЛОГО_Т}
+        height={ЛОГО_Д}
         opacity="0.92"
         preserveAspectRatio="xMidYMid meet"
-        transform={`rotate(90 ${логоX} ${MID_Y})`}
+        transform={`rotate(180 ${логоX} ${MID_Y})`}
       />
 
-      <g
-        style={{ fontFamily: font.css, fontWeight: font.weight }}
-        transform={`translate(${зонаЦентр} 0) scale(${squeeze} 1)`}
-      >
-        {rows.map((line, i) => {
-          const y = firstY + i * LINE_STEP;
-          return (
-            <g key={i}>
-              <text
-                x={0}
-                y={y + 0.18}
-                fontSize={size}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#000"
-                fillOpacity="0.26"
-              >
-                {line}
-              </text>
-              <text
-                x={0}
-                y={y}
-                fontSize={size}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#fff"
-                fillOpacity="1"
-              >
-                {line}
-              </text>
-            </g>
-          );
-        })}
-      </g>
+      {/* Логотип из базы стоит по центру зоны 28 × 15 мм в натуральную
+          величину — так он нарисован в файле заказчика. Зона одна,
+          поэтому строки в этот момент не гравируются. */}
+      {картинка ? (
+        <image
+          href={картинка.png}
+          x={зонаЦентр - картинка.w / 2}
+          y={MID_Y - картинка.h / 2}
+          width={картинка.w}
+          height={картинка.h}
+          preserveAspectRatio="none"
+        />
+      ) : (
+        <g
+          style={{ fontFamily: font.css, fontWeight: font.weight }}
+          transform={`translate(${зонаЦентр} 0) scale(${squeeze} 1)`}
+        >
+          {rows.map((line, i) => {
+            const y = firstY + i * LINE_STEP;
+            return (
+              <g key={i}>
+                <text
+                  x={0}
+                  y={y + 0.18}
+                  fontSize={size}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#000"
+                  fillOpacity="0.26"
+                >
+                  {line}
+                </text>
+                <text
+                  x={0}
+                  y={y}
+                  fontSize={size}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#fff"
+                  fillOpacity="1"
+                >
+                  {line}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      )}
     </g>
   );
 }

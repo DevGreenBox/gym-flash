@@ -1,6 +1,7 @@
 import type { CartItem } from "@/lib/cart";
+import { logoAt, logoIndex } from "@/lib/logos";
 import {
-  APPARATUS,
+  ALL_SIGNS,
   COLORS,
   CUSTOM_COLOR,
   FONTS,
@@ -21,12 +22,12 @@ import {
  * в один. Первое число — версия: старые ссылки не должны ломаться,
  * когда формат изменится.
  */
-const VERSION = 2;
+const VERSION = 3;
 
 /** Дальше этого адрес перестаёт открываться частью почтовых клиентов. */
 export const MAX_LINK = 1800;
 
-type Tuple = (string | number)[];
+type Tuple = (string | number | null)[];
 
 const b64url = (s: string) =>
   btoa(String.fromCharCode(...new TextEncoder().encode(s)))
@@ -44,13 +45,16 @@ const unb64url = (s: string) => {
 export function encodeOrder(items: CartItem[]): string {
   const tuples: Tuple[] = items.map((it) => {
     const c = COLORS.findIndex((x) => x.id === it.colorId);
-    const a = APPARATUS.findIndex((x) => x.id === it.apparatusId);
+    // знак — номером в общем списке: гимнастические в нём первые,
+    // поэтому номера старых ссылок не сдвинулись
+    const a = ALL_SIGNS.findIndex((x) => x.id === it.apparatusId);
     const f = Math.max(
       0,
       FONTS.findIndex((x) => x.id === it.fontId),
     );
     /* Порядок полей: цвет, знак, шрифт, три строки лица, количество,
-       три строки оборота, свой оттенок последним — он нужен редко. */
+       три строки оборота, свой оттенок, логотип оборота. Последние два
+       нужны редко и в конце не пишутся вовсе, если их нет. */
     const base: Tuple = [
       c,
       a,
@@ -59,7 +63,10 @@ export function encodeOrder(items: CartItem[]): string {
       it.qty,
       ...(it.back ?? ["", "", ""]),
     ];
-    return c === -1 && isHex(it.customHex) ? [...base, it.customHex] : base;
+    const hex = c === -1 && isHex(it.customHex) ? it.customHex : null;
+    const logo = logoIndex(it.backLogo);
+    if (logo !== -1) return [...base, hex, logo];
+    return hex ? [...base, hex] : base;
   });
   return b64url(JSON.stringify([VERSION, tuples]));
 }
@@ -74,7 +81,7 @@ export function encodeOrder(items: CartItem[]): string {
 export function decodeOrder(code: string): Omit<CartItem, "id">[] | null {
   try {
     const parsed: unknown = JSON.parse(unb64url(code));
-    if (!Array.isArray(parsed) || ![1, 2].includes(parsed[0] as number))
+    if (!Array.isArray(parsed) || ![1, 2, 3].includes(parsed[0] as number))
       return null;
     const rows = parsed[1];
     if (!Array.isArray(rows) || !rows.length) return null;
@@ -94,7 +101,7 @@ export function decodeOrder(code: string): Omit<CartItem, "id">[] | null {
       if (c !== -1 && !COLORS[c]) return [];
       if (c === -1 && !custom) return [];
 
-      if (a !== -1 && !APPARATUS[a]) return [];
+      if (a !== -1 && !ALL_SIGNS[a]) return [];
       const lines = [l1, l2, l3];
       if (!lines.every((l) => typeof l === "string")) return [];
       if (lines.some((l) => (l as string).length > SPEC.charsPerLine)) return [];
@@ -107,12 +114,14 @@ export function decodeOrder(code: string): Omit<CartItem, "id">[] | null {
         {
           colorId: custom ? CUSTOM_COLOR : COLORS[c].id,
           ...(custom ? { customHex: custom } : {}),
-          apparatusId: a === -1 ? null : APPARATUS[a].id,
+          apparatusId: a === -1 ? null : ALL_SIGNS[a].id,
           fontId: FONTS[f].id,
           lines: lines as [string, string, string],
           back: [0, 1, 2].map((i) =>
             typeof back[i] === "string" ? (back[i] as string).slice(0, SPEC.backChars) : "",
           ) as [string, string, string],
+          // логотип оборота — с третьей версии; неизвестный номер — без него
+          backLogo: версия >= 3 ? logoAt(row[11]) : null,
           qty,
         },
       ];

@@ -48,6 +48,7 @@ export function SiteHeader() {
         <span aria-hidden className="read-progress" />
 
         <div className="shell flex h-16 items-center justify-between gap-4">
+          {/* «Именные флешки» под логотипом — правка заказчика от 08.10 */}
           <Link href="/" aria-label={site.name}>
             <Logo className="text-[1.0625rem]" />
           </Link>

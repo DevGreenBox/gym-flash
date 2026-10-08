@@ -3,35 +3,25 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
+import { DrivePair, DriveSummary } from "@/components/drive-pair";
 import { FlashDrive } from "@/components/flash-drive";
-import { IconPicker } from "@/components/icon-picker";
 import { IncomingDraft, ShareDraft } from "@/components/share-draft";
 import {
   ApparatusIcon,
   ArrowRight,
   Bag,
-  Copy,
   Cross,
   Minus,
   Plus,
 } from "@/components/icons";
+import { MaskArt, SignPanel } from "@/components/sign-panel";
 import { addToCart, totalQty, useCart } from "@/lib/cart";
 import { ОТСТУП_НАДПИСИ, ПЛАСТИНА_ДОЛИ } from "@/components/drive-shape";
-import type { Item } from "@/lib/engraving";
-import {
-  addItem,
-  duplicateItem,
-  forgetRemoved,
-  removeItem,
-  resetEngraving,
-  setApparatus,
-  setBackLine,
-  setColor,
-  setLine,
-  undoRemove,
-  useEngraving,
-} from "@/lib/engraving";
+import type { EngravingStore, Item } from "@/lib/engraving";
+import { engraving } from "@/lib/engraving";
 import { FALLBACK, shownLines } from "@/lib/engraving-view";
+import { logoArt, logoBase, logoLabel } from "@/lib/logos";
+import { signFile } from "@/lib/signs";
 import {
   APPARATUS,
   ICON_BASES,
@@ -57,18 +47,35 @@ const FIELDS = [
 ] as const;
 
 /**
- * Настройки идут шагами в этом порядке; подписи же стоят на вкладках.
- * Шаг «Предмет» показывается только там, где предметы есть, — в разделе
- * художественной гимнастики. Покупателю флешки для учёбы или на подарок
- * обруч с булавами выбирать незачем, и знак на его флешку не попадает.
+ * Шаги собраны в две группы — по сторонам флешки, как на эскизе
+ * заказчика от 08.10: «Лицевая сторона» — надпись, пиктограмма, цвет;
+ * «Оборотная сторона» — надпись и логотип. Превью само встаёт той
+ * стороной, которую правят, поэтому отдельного переключателя сторон нет.
+ * Итог смотрят кнопкой «Предпросмотр» под превью — шага «Результат»
+ * больше нет.
  */
-const STEPS = [
-  { id: "lines", title: "Надпись" },
-  { id: "apparatus", title: "Предмет" },
-  { id: "color", title: "Оттенок" },
-  { id: "back", title: "Оборот" },
-  { id: "result", title: "Результат" },
+const GROUPS = [
+  {
+    side: "front" as const,
+    title: "Лицевая сторона",
+    steps: [
+      { id: "lines", title: "Надпись" },
+      { id: "apparatus", title: "Пиктограмма" },
+      { id: "color", title: "Цвет" },
+    ],
+  },
+  {
+    side: "back" as const,
+    title: "Оборотная сторона",
+    steps: [
+      { id: "back", title: "Надпись" },
+      { id: "logo", title: "Логотип" },
+    ],
+  },
 ];
+const STEPS = GROUPS.flatMap((g) =>
+  g.steps.map((s) => ({ ...s, side: g.side, group: g.title })),
+);
 
 /** Оборотная сторона: чертёж требует гравировку в одну, две или три строки. */
 const BACK_FIELDS = [
@@ -152,7 +159,11 @@ export function Constructor({
    */
   base?: string;
 } = {}) {
-  const { items, trash } = useEngraving();
+  // у каждого вида флешек свой набор: учёба не смешивается с гимнастикой
+  const store = engraving(base);
+  const { items, trash } = store.useEngraving();
+  const { addItem, forgetRemoved, removeItem, resetEngraving, undoRemove } =
+    store;
   const [added, setAdded] = useState<null | string>(null);
   const [qty, setQty] = useState(1);
 
@@ -168,7 +179,8 @@ export function Constructor({
     if (!trash) return;
     const t = setTimeout(forgetRemoved, 12000);
     return () => clearTimeout(t);
-  }, [trash]);
+    // набор свой у каждого вида и не меняется за время жизни страницы
+  }, [trash, forgetRemoved]);
 
   // заказ не уходит из-за конкретной позиции — её и называем
   const missing = items.find((it) => !it.lines[0].trim());
@@ -203,6 +215,7 @@ export function Constructor({
         fontId: it.fontId,
         lines: shownLines(it.lines),
         back: it.back,
+        backLogo: it.backLogo,
         qty,
       }),
     );
@@ -354,6 +367,7 @@ export function Constructor({
         </div>
 
         <DriveItem
+          store={store}
           key={active.id}
           priority={priority}
           item={active}
@@ -361,7 +375,6 @@ export function Constructor({
           items={items}
           onPick={setPickedId}
           onAdd={() => setPickedId(addItem())}
-          onDuplicate={() => setPickedId(duplicateItem(active.id))}
           onRemove={() => drop(active.id)}
           onRemoveItem={drop}
           base={base}
@@ -372,7 +385,7 @@ export function Constructor({
           order={order}
         />
 
-        {/* Убранную позицию можно вернуть на её место со всей настройкой:
+        {/* Удалённую позицию можно вернуть на её место со всей настройкой:
             семь флешек собираются не за минуту, и одно неверное нажатие
             не должно стоить всей работы. */}
         {trash ? (
@@ -381,7 +394,7 @@ export function Constructor({
             className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-card border border-hairline p-4"
           >
             <p className="text-[0.875rem]">
-              Убрана флешка: {apparatusLabel(trash.item.apparatusId)}
+              Удалена флешка: {apparatusLabel(trash.item.apparatusId)}
               {trash.item.lines[0].trim() ? ` · ${trash.item.lines[0]}` : ""}
             </p>
             <button
@@ -408,7 +421,6 @@ function DriveItem({
   items,
   onPick,
   onAdd,
-  onDuplicate,
   onRemove,
   onRemoveItem,
   onBuildSet,
@@ -416,13 +428,13 @@ function DriveItem({
   order,
   priority,
   base,
+  store,
 }: {
   item: Item;
   n: number;
   items: Item[];
   onPick: (id: string) => void;
   onAdd: () => void;
-  onDuplicate: () => void;
   onRemove: () => void;
   onRemoveItem: (id: string) => void;
   onBuildSet: () => void;
@@ -433,32 +445,34 @@ function DriveItem({
   priority: boolean;
   /** база знаков для окна выбора */
   base: string;
+  /** набор флешек этого вида — правки идут в него */
+  store: EngravingStore;
 }) {
+  const { setApparatus, setBackLine, setBackLogo, setColor, setLine } = store;
   const total = items.length;
   const [focused, setFocused] = useState<number | null>(null);
   const [step, setStep] = useState(0);
-  const [side, setSide] = useState<"front" | "back">("front");
-  const [picking, setPicking] = useState(false);
+  /* «Предпросмотр» — состояние прямо на странице, как вкладка (эскиз
+     заказчика от 08.10): в окне превью обе стороны сразу, на месте
+     шага — список выбранного. Любая вкладка шага возвращает к правке. */
+  const [previewing, setPreviewing] = useState(false);
 
   // Список шагов у раздела свой, поэтому шаг адресуется именем, а не
   // номером: с выключенным «Предметом» номер 2 означал бы уже «Оттенок».
   const steps = STEPS;
   const stepAt = (id: string) => steps.findIndex((s) => s.id === id);
 
-  /** Общая обвязка панели шага: связь с вкладкой, видимость и сторона входа. */
-  /* Открыли шаг «Оборот» — превью само поворачивается: править сторону,
-     которой не видно, невозможно. Обратно к лицу — так же. */
+  /* Сторона превью — сторона шага: открыли оборот — флешка
+     повернулась, править сторону, которой не видно, невозможно. */
   const openStep = (i: number) => {
+    setPreviewing(false);
     setStep(i);
-    setSide(steps[i]?.id === "back" ? "back" : "front");
   };
+  const side = steps[step]?.side ?? "front";
 
-  /* Последний шаг показывает изделие целиком — с подвеской. На остальных
-     её нет: цепочка и кольцо съедают треть ширины, а править надо
-     гравировку. Зоны нажатия там же и выключаются: холст под подвеску
-     шире, доли пластины другие, да и тыкать на витрине не во что. */
-  const итог = steps[step]?.id === "result";
-  const доли = ПЛАСТИНА_ДОЛИ(итог);
+  /* Подвески в рабочем превью нет: цепочка и кольцо съедают треть
+     ширины, а править надо гравировку. Целиком — в «Предпросмотре». */
+  const доли = ПЛАСТИНА_ДОЛИ(false);
 
   const pane = (id: string) => {
     const i = stepAt(id);
@@ -537,6 +551,7 @@ function DriveItem({
 
   const color = resolveColor(item.colorId, item.customHex);
   const shown = shownLines(item.lines);
+  const логотип = logoLabel(item.backLogo);
   const colorIndex = COLORS.findIndex((c) => c.id === item.colorId);
   const apparatus = apparatusLabel(apparatusId);
 
@@ -546,9 +561,12 @@ function DriveItem({
    * на знаки, и подмена оттенка под каждым нажатием сбивала бы уже
    * найденный цвет.
    */
+  const знаки = база.categories.flatMap((c) => c.items);
   const cycleApparatus = () => {
-    const now = APPARATUS.findIndex((a) => a.id === item.apparatusId);
-    setApparatus(item.id, APPARATUS[(now + 1) % APPARATUS.length].id, false);
+    if (!знаки.length) return;
+    // по кругу своей базы: у учёбы и подарка знаки свои, не гимнастические
+    const now = знаки.findIndex((a) => a.id === item.apparatusId);
+    setApparatus(item.id, знаки[(now + 1) % знаки.length].id, false);
   };
 
   /**
@@ -571,7 +589,7 @@ function DriveItem({
   // конструктор — один блок, а не заголовок и отдельная от него форма
   return (
     <div className="mt-[clamp(28px,3.5vw,52px)]">
-      <IncomingDraft />
+      <IncomingDraft onOpen={store.replaceItems} />
       {/* На телефоне строка не помещается целиком: номер позиции ломался
           на три этажа, а «Убрать» выезжало за поле набора. Действия
           переносятся под название — переносим строку, а не режем слова. */}
@@ -589,38 +607,20 @@ function DriveItem({
             {color.name}
           </span>
         </p>
-        <div className="flex items-center gap-5">
-          {/* у второй дочери те же предметы и другое имя: копия быстрее,
-              чем собирать позицию заново */}
+        {/* Копию теперь делает «+» в ленте — отдельной кнопки
+            «Дублировать» нет (правка заказчика от 08.10) */}
+        {total > 1 ? (
           <button
             type="button"
-            onClick={onDuplicate}
+            onClick={onRemove}
             className="tap inline-flex cursor-pointer items-center gap-2 text-[0.8125rem] text-ink/65 transition-colors duration-300 hover:text-ink"
           >
-            <Copy className="size-4" />
-            Дублировать
+            <Cross className="size-4" />
+            Удалить
           </button>
-          {total > 1 ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="tap inline-flex cursor-pointer items-center gap-2 text-[0.8125rem] text-ink/65 transition-colors duration-300 hover:text-ink"
-            >
-              <Cross className="size-4" />
-              Убрать
-            </button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
-      {picking ? (
-        <IconPicker
-          base={base}
-          value={item.apparatusId}
-          onPick={(id) => setApparatus(item.id, id)}
-          onClose={() => setPicking(false)}
-        />
-      ) : null}
 
       <div className="grid12-lg">
         {/* Превью едет за человеком на любом экране. На телефоне это узкая
@@ -644,104 +644,103 @@ function DriveItem({
                 половину ширины, а смотреть надо на гравировку. */}
             {/* на телефоне флешка ужата: полоса в полную ширину заняла бы
                 треть экрана и накрыла бы то, что человек в этот момент правит */}
-            {/* На «Результате» ограничение ширины снимаем: подвеска делает
-                картинку вдвое длиннее, и в 286 px от гравировки ничего
-                не остаётся. */}
-            <div
-              className={`relative w-full lg:max-w-none ${итог ? "" : "max-w-[286px]"}`}
-            >
-              <FlashDrive
-                priority={priority}
-                color={color.hex}
-                apparatusId={apparatusId}
-                lines={shown}
-                back={item.back}
-                fontId={item.fontId}
-                side={side}
-                chain={итог}
-                className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
-              />
+            {previewing ? (
+              <DrivePair item={{ ...item, lines: shown }} />
+            ) : (
+              <div className="relative w-full max-w-[286px] lg:max-w-none">
+                <FlashDrive
+                  priority={priority}
+                  color={color.hex}
+                  apparatusId={apparatusId}
+                  lines={shown}
+                  back={item.back}
+                  backLogo={item.backLogo}
+                  fontId={item.fontId}
+                  side={side}
+                  className="drop-shadow-[0_22px_36px_rgba(17,17,16,0.18)]"
+                />
 
-              {/* Гравировка кликабельна с обеих сторон: тычешь в строку
-                  на металле — попадаешь в её поле, тычешь в знак —
-                  листаешь предмет. Поле в фокусе подсвечивает свою
-                  строку, и наоборот.
+                {/* Гравировка кликабельна с обеих сторон: тычешь в строку
+                    на металле — попадаешь в её поле, тычешь в знак —
+                    листаешь предмет. Поле в фокусе подсвечивает свою
+                    строку, и наоборот.
 
-                  Зоны считаются от чертежа в долях пластины, а не
-                  подобраны на глаз: поле гравировки 45 мм внутри
-                  корпуса 50 мм, дальше Зона 1 в 32 мм, промежуток
-                  и Зона 2 в 11,5 мм. На обороте зона одна — 28 мм. */}
-              <div
-                hidden={итог}
-                className="absolute"
-                style={{
-                  left: `${доли.left}%`,
-                  top: `${доли.top}%`,
-                  width: `${доли.width}%`,
-                  height: `${доли.height}%`,
-                }}
-              >
-                {/* строки: на лицевой Зона 1, на обороте своя зона */}
+                    Зоны считаются от чертежа в долях пластины, а не
+                    подобраны на глаз: поле гравировки 45 мм внутри
+                    корпуса 50 мм, дальше Зона 1 в 32 мм, промежуток
+                    и Зона 2 в 11,5 мм. На обороте зона одна — 28 мм. */}
                 <div
-                  className="absolute flex flex-col"
+                  className="absolute"
                   style={{
-                    left: `${((side === "back" ? ZONE_L : ZONE_L_ЛИЦО) / SPEC.plate) * 100}%`,
-                    width: `${((side === "back" ? SPEC.backField : SPEC.textField - (ZONE_L_ЛИЦО - ZONE_L)) / SPEC.plate) * 100}%`,
-                    top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
-                    height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
+                    left: `${доли.left}%`,
+                    top: `${доли.top}%`,
+                    width: `${доли.width}%`,
+                    height: `${доли.height}%`,
                   }}
                 >
-                  {(side === "back" ? BACK_FIELDS : FIELDS).map((f, i) => (
-                    <button
-                      key={f.label}
-                      type="button"
-                      onClick={() => focusLine(side, i)}
-                      aria-label={`Изменить: ${f.label.toLowerCase()}`}
-                      className={`flex-1 cursor-text rounded-[3px] transition-colors duration-200 hover:bg-white/15 ${
-                        side === "front" && focused === i ? "bg-white/15" : ""
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                {/* знак листается прямо на металле — только на лицевой */}
-                {side === "front" && apparatusId ? (
-                  <button
-                    type="button"
-                    onClick={cycleApparatus}
-                    aria-label={`Предмет: ${apparatus}. Нажмите, чтобы поставить следующий`}
-                    className="absolute cursor-pointer rounded-[3px] transition-colors duration-200 hover:bg-white/15"
+                  {/* строки: на лицевой Зона 1, на обороте своя зона */}
+                  <div
+                    className="absolute flex flex-col"
                     style={{
-                      left: `${((SPEC.plate - (SPEC.plate - SPEC.field) / 2 - SPEC.iconField) / SPEC.plate) * 100}%`,
-                      width: `${(SPEC.iconField / SPEC.plate) * 100}%`,
+                      left: `${((side === "back" ? ZONE_L : ZONE_L_ЛИЦО) / SPEC.plate) * 100}%`,
+                      width: `${((side === "back" ? SPEC.backField : SPEC.textField - (ZONE_L_ЛИЦО - ZONE_L)) / SPEC.plate) * 100}%`,
                       top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
                       height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
                     }}
-                  />
-                ) : null}
-              </div>
-            </div>
+                  >
+                    {(side === "back" ? BACK_FIELDS : FIELDS).map((f, i) => (
+                      <button
+                        key={f.label}
+                        type="button"
+                        /* на обороте с логотипом строк нет — ведём к логотипу */
+                        onClick={() =>
+                          side === "back" && item.backLogo
+                            ? openStep(stepAt("logo"))
+                            : focusLine(side, i)
+                        }
+                        aria-label={`Изменить: ${f.label.toLowerCase()}`}
+                        className={`flex-1 cursor-text rounded-[3px] transition-colors duration-200 hover:bg-white/15 ${
+                          side === "front" && focused === i ? "bg-white/15" : ""
+                        }`}
+                      />
+                    ))}
+                  </div>
 
-            {/* Обе стороны: человек должен видеть, что получит целиком,
-                а не только лицо. */}
-            <div
-              role="group"
-              aria-label="Сторона флешки"
-              className="mt-3 flex justify-center gap-1"
-            >
-              {(["front", "back"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSide(s)}
-                  aria-pressed={side === s}
-                  className={`tap cursor-pointer rounded-pill px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-300 ${
-                    side === s ? "bg-ink text-paper" : "text-ink/65 hover:text-ink"
-                  }`}
-                >
-                  {s === "front" ? "Лицевая" : "Оборотная"}
-                </button>
-              ))}
+                  {/* знак листается прямо на металле — только на лицевой */}
+                  {side === "front" && apparatusId ? (
+                    <button
+                      type="button"
+                      onClick={cycleApparatus}
+                      aria-label={`Предмет: ${apparatus}. Нажмите, чтобы поставить следующий`}
+                      className="absolute cursor-pointer rounded-[3px] transition-colors duration-200 hover:bg-white/15"
+                      style={{
+                        left: `${((SPEC.plate - (SPEC.plate - SPEC.field) / 2 - SPEC.iconField) / SPEC.plate) * 100}%`,
+                        width: `${(SPEC.iconField / SPEC.plate) * 100}%`,
+                        top: `${(((SPEC.plateH - SPEC.fieldH) / 2) / SPEC.plateH) * 100}%`,
+                        height: `${(SPEC.fieldH / SPEC.plateH) * 100}%`,
+                      }}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Итог — кнопкой, а не шагом: обе стороны и список
+                выбранного открываются с любого шага; повторное нажатие
+                возвращает к шагу, с которого пришли. */}
+            <div className="mt-3 flex w-full justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewing((v) => !v)}
+                aria-pressed={previewing}
+                className={`tap inline-flex h-9 cursor-pointer items-center rounded-pill border px-4 text-[0.8125rem] transition-colors duration-300 ${
+                  previewing
+                    ? "border-ink bg-ink text-paper"
+                    : "border-ink/30 hover:border-ink"
+                }`}
+              >
+                Предпросмотр
+              </button>
             </div>
           </div>
 
@@ -772,46 +771,70 @@ function DriveItem({
             высокому шагу и не прыгает при переходе — «Далее» не убегает
             из-под пальца. */}
         <div className="mt-8 lg:col-span-5 lg:col-start-8 lg:mt-0">
-          {/* Порядок шагов: надпись → шрифт → предмет → оттенок. Человек
-              приходит вписать имя, а не подбирать цвет: сначала то, ради
-              чего он здесь, потом чем это набрано, потом на чём, и только
-              в конце — какого цвета корпус. */}
+          {/* Вкладки двумя группами — по сторонам флешки. Одна остановка
+              таба на весь ряд, внутри ходят стрелками — сквозь обе группы.
+              Название группы — для глаз; скринридеру сторона приходит
+              в имени вкладки. */}
           <div
             role="tablist"
             aria-label="Настройки флешки"
             ref={tabsRef}
             onKeyDown={onTabsKey}
-            /* шаг между рядами на телефоне крупнее: вкладки переносятся
-               на две строки, и расширенные зоны нажатия соседних рядов
-               иначе накладываются друг на друга */
-            className="flex flex-wrap gap-x-5 gap-y-2 border-b border-hairline pb-4 max-lg:gap-y-6"
+            className="flex flex-wrap gap-3 border-b border-hairline pb-5"
           >
-            {steps.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                id={`${tabId}-${s.id}`}
-                aria-selected={step === i}
-                aria-controls={`${paneId}-${s.id}`}
-                tabIndex={step === i ? 0 : -1}
-                onClick={() => openStep(i)}
-                className={`tap inline-flex cursor-pointer items-baseline gap-2 text-[0.9375rem] transition-colors duration-300 ${
-                  step === i ? "text-ink" : "text-ink/65 hover:text-ink"
-                }`}
-              >
-                {/* номера сняты на телефоне: с ними ряд не влезает в строку
-                    и переносится, а панель шагов и так занимает четверть
-                    экрана. Слово важнее номера */}
-                <span className="hidden text-[0.6875rem] font-semibold tabular-nums lg:inline">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                {s.title}
-              </button>
-            ))}
+            {GROUPS.map((g) => {
+              const здесь = !previewing && side === g.side;
+              return (
+                <div
+                  key={g.side}
+                  className={`min-w-0 flex-auto rounded-field border p-3 transition-colors duration-300 ${
+                    здесь ? "border-ink/45" : "border-hairline"
+                  }`}
+                >
+                  <p
+                    aria-hidden
+                    className={`text-[0.6875rem] font-semibold tracking-[0.14em] uppercase transition-colors duration-300 ${
+                      здесь ? "text-ink" : "text-ink/65"
+                    }`}
+                  >
+                    {g.title}
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {g.steps.map((st) => {
+                      const i = stepAt(st.id);
+                      const on = !previewing && step === i;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          role="tab"
+                          id={`${tabId}-${st.id}`}
+                          aria-selected={on}
+                          aria-controls={`${paneId}-${st.id}`}
+                          aria-label={`${g.title}: ${st.title.toLowerCase()}`}
+                          /* точка входа с клавиатуры — текущий шаг,
+                             даже когда открыт предпросмотр */
+                          tabIndex={step === i ? 0 : -1}
+                          onClick={() => openStep(i)}
+                          className={`tap inline-flex h-9 cursor-pointer items-center rounded-pill border px-3.5 text-[0.875rem] transition-colors duration-300 ${
+                            on
+                              ? "border-ink bg-ink text-paper"
+                              : "border-hairline text-ink/70 hover:border-ink/40 hover:text-ink"
+                          }`}
+                        >
+                          {st.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="mt-7 grid">
+          {previewing ? <DriveSummary item={item} className="mt-7" /> : null}
+
+          <div className={`mt-7 grid ${previewing ? "hidden" : ""}`}>
             <div {...pane("lines")}>
               <Step>
                 <div className="space-y-6">
@@ -853,35 +876,41 @@ function DriveItem({
                 </div>
               </Step>
             </div>
-            {/* Чертёж, пункт 5: выбор пиктограммы во всплывающем окне
-                из базы для этого вида флешек. Строкой чипсов это
-                не закрыть — у подарка и учёбы базы разбиты
-                на категории и знаков там будут десятки. */}
+            {/* Пиктограмма — окном базы прямо в шаге: подразделы,
+                прокрутка (эскиз заказчика от 08.10; поиск снят). Плитки — те же
+                пиктограммы, что лягут на пластину. */}
             <div {...pane("apparatus")}>
               <Step note={apparatus}>
-                <button
-                  type="button"
-                  onClick={() => setPicking(true)}
-                  className="inline-flex h-13 cursor-pointer items-center gap-3 rounded-pill border border-hairline px-5 text-[0.9375rem] transition-colors duration-300 hover:border-ink/40"
-                >
-                  {item.apparatusId ? (
-                    <ApparatusIcon id={item.apparatusId} className="size-5" />
-                  ) : (
-                    <Cross className="size-5 text-ink/45" />
-                  )}
-                  {apparatus}
-                  <span className="text-[0.8125rem] text-ink/65">— выбрать</span>
-                </button>
-
-                <p className="mt-3 text-[0.75rem] text-ink/65">
-                  {база.categories.length
-                    ? "Цвет подставляется под предмет. Без знака остаются только три строки."
-                    : "База знаков для этого вида флешек ещё не собрана — ждём файлы и разбивку по категориям."}
-                </p>
+                <SignPanel
+                  label="Пиктограмма"
+                  categories={база.categories}
+                  value={item.apparatusId}
+                  onPick={(id) => setApparatus(item.id, id)}
+                  none="Без знака"
+                  tile={(id) => {
+                    const файл = signFile(id);
+                    return файл
+                      ? { node: <MaskArt src={файл} />, caption: true }
+                      : { node: <ApparatusIcon id={id} className="size-8" />, caption: false };
+                  }}
+                  empty="База пиктограмм для этого вида флешек ещё не собрана — ждём файлы и разбивку по подразделам. Пока доступен вариант без знака: три строки занимают всю пластину."
+                />
+                {база.categories.length ? (
+                  <p className="mt-3 text-[0.75rem] text-ink/65">
+                    Цвет подставляется под предмет. Без знака остаются только
+                    три строки.
+                  </p>
+                ) : null}
               </Step>
             </div>
             <div {...pane("back")}>
-              <Step note="Зона 28 × 15 мм. Строки центруются, как на лицевой.">
+              <Step
+                note={
+                  логотип
+                    ? `На обороте логотип «${логотип}» — надпись сейчас не гравируется. Уберите логотип, и она вернётся.`
+                    : "Зона 28 × 15 мм. Строки центруются, как на лицевой."
+                }
+              >
                 <div className="space-y-6">
                   {BACK_FIELDS.map((f, i) => (
                     <label key={f.label} className="field block">
@@ -906,8 +935,35 @@ function DriveItem({
                   ))}
                 </div>
                 <p className="mt-4 text-[0.75rem] text-ink/65">
-                  Логотип и ось поворота на обороте всегда — их не выбирают.
-                  Выбор картинки из базы оборотов — уточняется.
+                  Знак Personal Flash и ось поворота на обороте всегда — их
+                  не выбирают.
+                </p>
+              </Step>
+            </div>
+
+            {/* Логотип — картинка из базы по центру зоны 28 × 15 мм.
+                Зона та же, что у надписи оборота, поэтому логотип встаёт
+                вместо строк; строки при этом не стираются. */}
+            <div {...pane("logo")}>
+              <Step note={логотип ? `Логотип: ${логотип}` : "Без логотипа"}>
+                <SignPanel
+                  label="Логотип оборота"
+                  categories={logoBase(base)}
+                  value={item.backLogo}
+                  onPick={(id) => setBackLogo(item.id, id)}
+                  none="Без логотипа"
+                  tile={(id) => {
+                    const a = logoArt(id);
+                    return {
+                      node: a ? <MaskArt src={a.svg} /> : null,
+                      caption: false,
+                    };
+                  }}
+                  empty="База логотипов ещё не собрана."
+                />
+                <p className="mt-3 text-[0.75rem] text-ink/65">
+                  Логотип встаёт по центру зоны 28 × 15 мм вместо надписи
+                  оборота.
                 </p>
               </Step>
             </div>
@@ -972,56 +1028,23 @@ function DriveItem({
               </Step>
             </div>
 
-            {/* Итог. Превью на этом шаге показывает изделие целиком —
-                с подвеской, как оно приедет; здесь рядом стоит список
-                выбранного, чтобы проверить всё одним взглядом,
-                не возвращаясь по шагам. */}
-            <div {...pane("result")}>
-              <Step note="Так флешка приедет">
-                <dl className="divide-y divide-hairline border-y border-hairline text-[0.9375rem]">
-                  {[
-                    {
-                      k: "Лицевая",
-                      v: shown.filter(Boolean).join(" · ") || "не заполнена",
-                    },
-                    { k: "Знак", v: apparatus },
-                    { k: "Оттенок", v: `${color.name} · ${color.hex}` },
-                    {
-                      k: "Оборот",
-                      v:
-                        item.back.filter((l) => l.trim()).join(" · ") ||
-                        "без гравировки",
-                    },
-                    { k: "Подвеска", v: "Кольцо с цепочкой — в комплекте" },
-                  ].map((r) => (
-                    <div
-                      key={r.k}
-                      className="flex items-baseline justify-between gap-5 py-3.5"
-                    >
-                      <dt className="shrink-0 text-[0.6875rem] font-semibold tracking-[0.14em] text-ink/65 uppercase">
-                        {r.k}
-                      </dt>
-                      <dd className="text-right">{r.v}</dd>
-                    </div>
-                  ))}
-                </dl>
-
-                <p className="mt-3 text-[0.75rem] text-ink/65">
-                  Что-то не так — вернитесь на нужный шаг наверху.
-                </p>
-              </Step>
-            </div>
           </div>
 
           {/* На последнем шаге «Далее» некуда: дальше идут количество
-              и корзина, они стоят под всем блоком. */}
-          {step < steps.length - 1 ? (
+              и корзина, они стоят под всем блоком. Переход на другую
+              сторону называется стороной, а не шагом: «Далее: надпись»
+              с лица на оборот читалось бы как возврат назад. */}
+          {!previewing && step < steps.length - 1 ? (
             <button
               type="button"
               onClick={() => openStep(step + 1)}
               className="group mt-8 inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-pill border border-ink px-6 text-[0.875rem] font-medium transition-colors duration-300 hover:bg-ink hover:text-paper"
             >
-              Далее: {steps[step + 1].title.toLowerCase()}
+              Далее:{" "}
+              {(steps[step + 1].side === side
+                ? steps[step + 1].title
+                : steps[step + 1].group
+              ).toLowerCase()}
               <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
             </button>
           ) : null}
@@ -1173,7 +1196,7 @@ function DriveRail({
                 </span>
               </button>
 
-              {/* Крестик прямо на окне: искать «Убрать» в заголовке ради
+              {/* Крестик прямо на окне: искать «Удалить» в заголовке ради
                   лишней флешки — лишний путь. Кнопка стоит соседом,
                   а не внутри плитки: кнопка в кнопке невалидна,
                   и нажатие уходило бы обеим. */}
@@ -1181,7 +1204,7 @@ function DriveRail({
                 <button
                   type="button"
                   onClick={() => onRemove(it.id)}
-                  aria-label={`Убрать флешку ${i + 1}`}
+                  aria-label={`Удалить флешку ${i + 1}`}
                   /* виден всегда: крестик, который появляется на наведении,
                      всё равно надо найти — а смысл был в обратном */
                   className="absolute top-1 right-1 grid size-6 cursor-pointer place-items-center rounded-pill bg-paper/60 text-ink/65 transition-colors duration-200 hover:bg-paper hover:text-ink"
@@ -1197,7 +1220,9 @@ function DriveRail({
           <button
             type="button"
             onClick={onAdd}
-            aria-label="Добавить ещё флешку"
+            /* «+» — копия предыдущей флешки со всей настройкой, включая
+               оборот: правка заказчика от 08.10 */
+            aria-label="Добавить флешку — копию предыдущей"
             className="grid h-full w-full cursor-pointer place-items-center gap-1.5 rounded-field border border-dashed border-ink/25 px-3 pt-4 pb-2.5 text-ink/65 transition-colors duration-300 hover:border-ink/50 hover:text-ink"
           >
             <Plus className="size-5" />

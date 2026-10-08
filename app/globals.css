@@ -222,7 +222,7 @@ html {
   }
 }
 
-/* Заголовок героя меняется сам: три обещания по три секунды. Смена —
+/* Заголовок героя меняется сам: три слайда по шесть секунд. Смена —
    свайп на 22 px и прозрачность, тот же закон, что и у остального движения
    на сайте: строка уезжает, а не мигает. */
 @keyframes hero-swipe {
@@ -243,6 +243,22 @@ html {
   100% {
     opacity: 0;
     transform: translateX(-26px);
+  }
+}
+
+/* Тот же ход без сдвига — для тех, кто попросил систему меньше двигаться. */
+@keyframes hero-swap {
+  0%,
+  3.33% {
+    opacity: 0;
+  }
+  6.67%,
+  33.33% {
+    opacity: 1;
+  }
+  36.67%,
+  100% {
+    opacity: 0;
   }
 }
 
@@ -311,11 +327,53 @@ html {
    не остаётся с тремя заголовками разом. */
 .hero-swipe > span {
   grid-area: 1 / 1;
+  /* к низу ячейки: однострочный заголовок встаёт над подписью, а не
+     висит у верха ячейки, рассчитанной на двустрочный */
+  align-self: end;
   opacity: 0;
 }
 
 .hero-swipe > span:first-child {
   opacity: 1;
+}
+
+/* Карусель листается всегда: заказчик просил «автоматически
+   и принудительно». Если система просит меньше движения, слайды
+   не едут, а сменяются прозрачностью — смена остаётся, сдвига нет.
+   Сам сдвиг включается ниже, под `prefers-reduced-motion`. */
+.hero-swipe > span {
+  animation: hero-swap 18s ease-in-out infinite;
+}
+
+/* Первый кадр не гаснет никогда — он подложка. Если гасить его вместе
+   с приходом второго, в середине перехода оба стоят на половине,
+   и сквозь них на четверть просвечивает бумага: переход даёт вспышку. */
+.hero-frame:nth-child(2),
+.hero-frame:nth-child(3) {
+  animation: hero-fade 18s ease-in-out infinite;
+}
+
+/* Задержки общие для кадра, заголовка и подписи. Первая тройка
+   стартует с −1,2 с: при загрузке она уже полностью на месте,
+   и страница не открывается пустым первым экраном. */
+.hero-swipe > span:nth-child(1) {
+  animation-delay: -1.2s;
+}
+
+.hero-swipe > span:nth-child(2),
+.hero-frame:nth-child(2) {
+  animation-delay: 4.8s;
+}
+
+.hero-swipe > span:nth-child(3),
+.hero-frame:nth-child(3) {
+  animation-delay: 10.8s;
+}
+
+/* Слайд — ссылка во всю площадь. Рамка фокуса внутрь: снаружи её
+   срезал бы `overflow` первого экрана. */
+.hero-link:focus-visible {
+  outline-offset: -6px;
 }
 
 /* Блок проступает, пока входит в кадр. Только прозрачность — ничего
@@ -324,6 +382,30 @@ html {
   from {
     opacity: 0;
   }
+}
+
+/* Окно базы картинок в конструкторе: полоса прокрутки видна всегда —
+   заказчик просил её прямо (08.10), а спрятанная полоса не говорит,
+   что ниже есть ещё. Цвета — из палитры, не системные. */
+.panel-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-ink) 45%, transparent)
+    color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  border-radius: 999px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  border-radius: 999px;
 }
 
 /* Шапка: сколько страницы прочитано. Волосок в цвет выбранной флешки —
@@ -338,7 +420,7 @@ html {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Заход на сайт: заголовок, подпись и кнопка проступают по очереди.
+  /* Заход на сайт: заголовок и подпись проступают по очереди.
      Заливка `both` держит начальное состояние до старта, поэтому первый
      кадр не мигает готовым текстом. */
   .rise > * {
@@ -349,37 +431,8 @@ html {
     animation-delay: 120ms;
   }
 
-  .rise > :nth-child(3) {
-    animation-delay: 240ms;
-  }
-
   .hero-swipe > span {
-    animation: hero-swipe 18s ease-in-out infinite;
-  }
-
-  /* Первый кадр не гаснет никогда — он подложка. Если гасить его вместе
-     с приходом второго, в середине перехода оба стоят на половине,
-     и сквозь них на четверть просвечивает бумага: переход даёт вспышку. */
-  .hero-frame:nth-child(2),
-  .hero-frame:nth-child(3) {
-    animation: hero-fade 18s ease-in-out infinite;
-  }
-
-  /* Задержки общие для кадра и строки. Первая пара стартует с −1,2 с:
-     при загрузке она уже полностью на месте, и страница не открывается
-     пустым первым экраном. */
-  .hero-swipe > span:nth-child(1) {
-    animation-delay: -1.2s;
-  }
-
-  .hero-swipe > span:nth-child(2),
-  .hero-frame:nth-child(2) {
-    animation-delay: 4.8s;
-  }
-
-  .hero-swipe > span:nth-child(3),
-  .hero-frame:nth-child(3) {
-    animation-delay: 10.8s;
+    animation-name: hero-swipe;
   }
 
   @supports (animation-timeline: view()) {

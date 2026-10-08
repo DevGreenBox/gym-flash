@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 
 import { Constructor } from "@/components/constructor";
 import { SECTIONS } from "@/lib/content";
-import { sectionMeta } from "@/lib/meta";
+import { pageMeta } from "@/lib/meta";
 
 const section = SECTIONS.gymnastics;
 
-export const metadata: Metadata = sectionMeta(section);
+/* «Личная программа» — один из трёх конструкторов направления
+   «Для тренировок и выступлений» (правка заказчика от 08.10);
+   адрес прежний, чтобы не сломать присланные ссылки на сборки */
+export const metadata: Metadata = pageMeta({
+  title: "Личная программа",
+  description: section.meta,
+  path: "/gymnastics",
+});
 
 /**
  * Раздел — сам конструктор, без вступительного разворота: в шапке он так

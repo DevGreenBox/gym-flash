@@ -1,23 +1,38 @@
 import { getImageProps } from "next/image";
 import Link from "next/link";
 
-import { ArrowRight } from "@/components/icons";
-
 /**
- * Первый экран минималистичный и центрированный: фон, две строки и одна
- * кнопка. Выбор цвета, предмета и надписи ждёт в конструкторе — здесь
- * человеку нужно понять, куда он попал, и нажать один раз.
+ * Первый экран — карусель из трёх слайдов: кадр, заголовок и подпись.
+ * Кнопки нет — правка заказчика от 08.10; весь слайд ведёт
+ * в «Примеры работ».
  *
  * Текст лежит на фотографии, поэтому под ним стоит завеса молочного:
- * самая тёмная точка центра кадра — 104 из 255, под завесой она даёт
- * 8,9 : 1 к графиту, то есть заголовок читается везде.
+ * под заголовком не ниже 8,9 : 1 к графиту на любом кадре, под подписью
+ * на телефоне не ниже 4,53 : 1 — заголовок и подпись читаются везде.
  */
 /**
- * Три кадра под три строки заголовка. Порядок общий с `.hero-swipe`
- * в `globals.css`: «Сохрани момент» — учёба, «Музыка твоей победы» —
- * гимнастика, «Подари впечатления» — подарок.
+ * Слайды — по эскизу заказчика от 08.10, в его порядке. Первый кадр —
+ * подложка (см. `.hero-frame` в `globals.css`), поэтому первым стоит
+ * гимнастика: с неё сайт и открывается. «Победы» с прописной — так
+ * в правке заказчика.
  */
-const HERO = ["hero-1", "hero-2", "hero-3"];
+const SLIDES = [
+  {
+    frame: "hero-2",
+    title: "Музыка твоей Победы",
+    sub: "Для тренировок и выступлений",
+  },
+  {
+    frame: "hero-1",
+    title: "Ключ к твоим знаниям",
+    sub: "Учись. Создавай. Сохраняй",
+  },
+  {
+    frame: "hero-3",
+    title: "Особый знак внимания",
+    sub: "Помоги сохранить важное",
+  },
+];
 
 /**
  * Телефону достаётся свой кадр, а не тот же самый.
@@ -83,12 +98,12 @@ function Frame({ name, priority }: { name: string; priority: boolean }) {
 export function Hero() {
   return (
     <section className="hero relative isolate overflow-hidden">
-      {/* Кадр на каждое обещание: фон меняется вместе со строкой.
+      {/* Кадр на каждый слайд: фон меняется вместе со строками.
           Замерено под завесой: самая тёмная точка под заголовком даёт
-          8,9 : 1 на первом кадре, 9,0 на втором и 9,2 на третьем. */}
-      {HERO.map((name, i) => (
-        <span key={name} aria-hidden className="hero-frame absolute inset-0 -z-20">
-          <Frame name={name} priority={i === 0} />
+          9,0 : 1 на гимнастике, 8,9 на учёбе и 9,2 на подарке. */}
+      {SLIDES.map((s, i) => (
+        <span key={s.frame} aria-hidden className="hero-frame absolute inset-0 -z-20">
+          <Frame name={s.frame} priority={i === 0} />
         </span>
       ))}
 
@@ -97,31 +112,39 @@ export function Hero() {
           вырезан по предмету и под текстом стоит не пустая стена */}
       <div aria-hidden className="hero-veil absolute inset-0 -z-10" />
 
+      {/* Слайд целиком — ссылка в «Примеры работ». Ссылка лежит под текстом
+          на всю площадь, а текст пропускает нажатия сквозь себя: так
+          кликабелен весь кадр, а скринридер читает заголовок заголовком,
+          а не подписью ссылки. */}
+      <Link
+        href="/gallery"
+        aria-label="Примеры работ"
+        className="hero-link absolute inset-0 -z-[5]"
+      />
+
       {/* Текст стоит ровно посередине кадра — и по ширине, и по высоте.
-          Поле фотографии под кнопкой работает межблочным отступом:
+          Поле фотографии под подписью работает межблочным отступом:
           следующий блок своего сверху не добавляет. */}
-      <div className="rise shell flex min-h-[min(70vh,560px)] flex-col items-center justify-center py-[clamp(56px,10vw,140px)] text-center md:min-h-[min(84vh,700px)]">
-        {/* Три обещания сменяют друг друга сами, по три секунды каждое.
-            Смену считает браузер: ни таймера, ни клиентского компонента —
-            первый экран остаётся серверным и грузится без JavaScript. */}
+      <div className="rise shell pointer-events-none flex min-h-[min(70vh,560px)] flex-col items-center justify-center py-[clamp(56px,10vw,140px)] text-center md:min-h-[min(84vh,700px)]">
+        {/* Слайды сменяют друг друга сами, по шесть секунд. Смену считает
+            браузер: ни таймера, ни клиентского компонента — первый экран
+            остаётся серверным и грузится без JavaScript. Заголовок
+            и подпись едут одной парой: задержки у них общие. */}
         <h1 className="hero-swipe grid max-w-[16ch] text-[clamp(2.6rem,6.4vw,5rem)] leading-[1.02] tracking-[-0.02em] text-balance">
-          <span>Сохрани момент</span>
-          <span>Музыка твоей победы</span>
-          <span>Подари впечатления</span>
+          {SLIDES.map((s) => (
+            <span key={s.frame}>
+              {s.title}
+              {/* без точки скринридер читает три заголовка одной фразой */}
+              <span className="sr-only">.</span>
+            </span>
+          ))}
         </h1>
 
-        <p className="mt-8 max-w-[36ch] text-[1.0625rem] leading-[1.65] text-ink/70">
-          Флешки для художественной гимнастики
-          <br className="hidden sm:block" /> с персональной гравировкой
+        <p className="hero-swipe mt-8 grid max-w-[36ch] text-[1.0625rem] leading-[1.65] text-ink/70">
+          {SLIDES.map((s) => (
+            <span key={s.frame}>{s.sub}</span>
+          ))}
         </p>
-
-        <Link
-          href="#constructor"
-          className="group mt-11 inline-flex h-13 items-center gap-2.5 rounded-pill bg-ink px-7 text-[0.9375rem] font-medium text-paper transition-transform duration-150 hover:-translate-y-px"
-        >
-          Выбрать свою флешку
-          <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
-        </Link>
       </div>
     </section>
   );

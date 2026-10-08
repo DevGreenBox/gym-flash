@@ -5,7 +5,6 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Copy, Cross } from "@/components/icons";
 import type { Item } from "@/lib/engraving";
-import { replaceItems } from "@/lib/engraving";
 import { FONTS } from "@/lib/site";
 import {
   clearDraft,
@@ -72,7 +71,12 @@ export function ShareDraft({ items }: { items: Item[] }) {
 }
 
 /** Сборка, пришедшая ссылкой: спрашиваем, прежде чем занять конструктор. */
-export function IncomingDraft() {
+export function IncomingDraft({
+  onOpen,
+}: {
+  /** куда открыть сборку: в набор того вида флешек, где открыта ссылка */
+  onOpen: (items: Omit<Item, "id">[]) => void;
+}) {
   const draft = useSyncExternalStore(
     subscribeDraft,
     draftSnapshot,
@@ -121,10 +125,11 @@ export function IncomingDraft() {
             // у корзинной записи гарнитура необязательна, у сборки —
             // обязательна: разбор ссылки её всегда проставляет, но тип
             // об этом не знает, поэтому подстраховываемся значением по умолчанию
-            replaceItems(
+            onOpen(
               draft.map((it) => ({
                 lines: it.lines,
                 back: it.back ?? (["", "", ""] as [string, string, string]),
+                backLogo: it.backLogo ?? null,
                 colorId: it.colorId,
                 customHex: it.customHex,
                 apparatusId: it.apparatusId,

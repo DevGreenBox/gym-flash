@@ -79,7 +79,7 @@ export function Directions() {
               Направления
             </p>
             <h2 className="mt-5 text-[clamp(1.7rem,3.4vw,2.6rem)] leading-[1.06] font-normal tracking-[-0.02em]">
-              Зачем нужна именная флешка
+              Создай свою флешку
             </h2>
           </div>
 
@@ -148,12 +148,17 @@ export function Directions() {
                 </div>
 
                 <h3 className="mt-6 font-display text-[1.35rem] leading-[1.15] tracking-[-0.02em]">
-                  {c.label}
+                  {c.title}
                 </h3>
-                <p className="mt-3 flex-1 text-[0.9375rem] leading-relaxed text-ink/70">
-                  {c.note}
-                </p>
-                <span className="mt-6 inline-flex items-center gap-2 text-[0.8125rem] text-ink/65 transition-colors duration-300 group-hover:text-ink">
+                {/* описание есть только у первой карточки — правка заказчика
+                    от 08.10; «Подробнее» всё равно стоит по низу карточки,
+                    чтобы ссылки в ряду шли на одной линии */}
+                {c.note ? (
+                  <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink/70">
+                    {c.note}
+                  </p>
+                ) : null}
+                <span className="mt-auto inline-flex items-center gap-2 pt-6 text-[0.8125rem] text-ink/65 transition-colors duration-300 group-hover:text-ink">
                   Подробнее
                   <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
                 </span>

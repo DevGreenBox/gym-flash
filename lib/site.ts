@@ -15,6 +15,8 @@ export const site = {
   email: "personal_flash@mail.ru",
   city: "Ростов-на-Дону",
   legal: "ИП Андеев В. А.",
+  /** ИНН ИП — из правки заказчика от 08.10 (раздел 5); контрольные цифры сходятся */
+  inn: "773009151807",
   whatsapp: null, // TODO(client): номер или ссылка на чат
   /**
    * Чат по номеру — штатная ссылка Telegram: `t.me/+` и номер в между-
@@ -35,8 +37,9 @@ export const site = {
  * которое заказчик просил под неё оставить.
  */
 export const MESSENGERS: { id: string; label: string; href: string | null }[] = [
-  { id: "telegram", label: "Telegram", href: site.telegram },
+  // MAX первым: заказчик называет его основным, Telegram — вторым (08.10)
   { id: "max", label: "MAX", href: site.max },
+  { id: "telegram", label: "Telegram", href: site.telegram },
 ];
 
 /**
@@ -44,20 +47,27 @@ export const MESSENGERS: { id: string; label: string; href: string | null }[] = 
  * не помещаются ни на одном экране. В меню, подвале и заголовках страниц
  * работает `label`.
  */
+/*
+ * Порядок и названия — правка заказчика от 08.10 («бургер меню»):
+ * направления называются как карточки на главной, «Примеры работ»
+ * и «Цены» стоят сразу за направлениями. Тот же список — в подвале
+ * и в строке шапки.
+ */
 export const NAV = [
   { href: "/", label: "Главная", short: "Главная" },
   { href: "/about", label: "О нас", short: "О нас" },
   {
-    href: "/gymnastics",
-    label: "Для художественной гимнастики",
+    // выбор из трёх конструкторов: личная, групповая, другие виды спорта
+    href: "/training",
+    label: "Для тренировок и выступлений",
     short: "Конструктор",
   },
-  { href: "/study", label: "Для учёбы", short: "Учёба" },
+  { href: "/study", label: "Для учёбы, работы, хобби", short: "Учёба" },
   { href: "/gift", label: "Памятный подарок", short: "Подарок" },
+  { href: "/gallery", label: "Примеры работ", short: "Работы" },
+  { href: "/prices", label: "Цены", short: "Цены" },
   { href: "/delivery", label: "Доставка", short: "Доставка" },
   { href: "/reviews", label: "Отзывы и рекомендации", short: "Отзывы" },
-  { href: "/prices", label: "Цены", short: "Цены" },
-  { href: "/gallery", label: "Примеры работ", short: "Работы" },
   { href: "/contacts", label: "Контакты", short: "Контакты" },
 ];
 
@@ -73,12 +83,20 @@ export const HEADER_NAV = NAV.filter((i) => !NOT_IN_HEADER.includes(i.href));
  * Три направления с главной страницы макета. `preview` рисуется вектором:
  * пока нет съёмки, честнее показать настоящую гравировку, чем серый экран.
  * Надписи — очевидно демонстрационные, за реальные заказы не выдаются.
+ *
+ * `label` — название раздела (экран выбора конструктора), `title`
+ * и `note` — карточка в блоке «Создай свою флешку» на главной.
+ * Названия везде одинаковые — как в меню (правка заказчика от 08.10);
+ * описание у карточек осталось только у первой.
  */
 export const CATEGORIES = [
   {
-    href: "/gymnastics",
-    label: "Для художественной гимнастики",
-    note: "Вид видно по знаку на лицевой стороне, переворачивать не нужно",
+    href: "/training",
+    label: "Для тренировок и выступлений",
+    title: "Для тренировок и выступлений",
+    note: "Личная программа, групповые программы, другие виды спорта" as
+      | string
+      | null,
     /** чем этот конструктор отличается от соседних — для экрана выбора */
     difference: "Три строки и знак вида: обруч, мяч, булавы, лента, скакалка, Б/П или знак для тренировок.",
     preview: {
@@ -89,24 +107,63 @@ export const CATEGORIES = [
   },
   {
     href: "/study",
-    label: "Для учёбы",
-    note: "Имя и класс на корпусе — видно, чья это флешка",
+    label: "Для учёбы, работы, хобби",
+    title: "Для учёбы, работы, хобби",
+    note: null,
     difference: "Три строки без знака вида: фамилия, имя и класс.",
     preview: {
       colorId: "blue",
-      apparatusId: null as string | null,
+      apparatusId: "study" as string | null,
       lines: ["Петров", "Артём", "5 «Б»"] as [string, string, string],
     },
   },
   {
     href: "/gift",
     label: "Памятный подарок",
-    note: "Дата и повод остаются на металле",
+    title: "Памятный подарок",
+    note: null,
     difference: "Три строки без знака вида: имя, повод и дата.",
     preview: {
       colorId: "bronze",
-      apparatusId: null as string | null,
+      apparatusId: "gift" as string | null,
       lines: ["Маме", "с любовью", "2026"] as [string, string, string],
+    },
+  },
+];
+
+/**
+ * «Для тренировок и выступлений» — три конструктора (правка заказчика
+ * от 08.10): личная программа, групповая программа, другие виды спорта.
+ * Карточка направления на главной, меню и «Создай свою флешку»
+ * в «Примерах работ» ведут на выбор из них (`/training`).
+ * Личная программа живёт по прежнему адресу `/gymnastics`.
+ */
+export const TRAINING = [
+  {
+    href: "/gymnastics",
+    label: "Личная программа",
+    preview: {
+      colorId: "red",
+      apparatusId: "hoop" as string | null,
+      lines: ["Иванова", "Амелия", "2017"] as [string, string, string],
+    },
+  },
+  {
+    href: "/group",
+    label: "Групповая программа",
+    preview: {
+      colorId: "violet",
+      apparatusId: "ball" as string | null,
+      lines: ["Сборная", "«Грация»", "2026"] as [string, string, string],
+    },
+  },
+  {
+    href: "/sport",
+    label: "Другие виды спорта",
+    preview: {
+      colorId: "blue",
+      apparatusId: null as string | null,
+      lines: ["Смирнов", "Иван", "2014"] as [string, string, string],
     },
   },
 ];
@@ -138,12 +195,32 @@ export const APPARATUS: Apparatus[] = [
 ];
 
 /**
+ * Знаки учёбы и подарка — правка заказчика от 08.10: «пиктограммы как
+ * на первом варианте, но соответствующие». Рисунки — в стиле пиктограмм
+ * заказчика из PDF (`public/signs/`, `scripts/draw-signs.mjs`). Стоят
+ * на превью главной и в базах конструкторов учёбы и подарка — пока
+ * по одному знаку, как образец.
+ * TODO(client): заменить базами пиктограмм учёбы и подарка от заказчика.
+ */
+export const PREVIEW_SIGNS: Apparatus[] = [
+  { id: "study", label: "Учёба" },
+  { id: "gift", label: "Подарок" },
+];
+
+/**
+ * Все знаки всех баз — для подписей и проверки сохранённого. Порядок
+ * важен: гимнастические идут первыми, потому что ссылка «поделиться»
+ * хранит знак номером, и старые ссылки должны читаться как прежде.
+ */
+export const ALL_SIGNS: Apparatus[] = [...APPARATUS, ...PREVIEW_SIGNS];
+
+/**
  * Гравировка без знака: остаются только три строки, и поле текста занимает
  * всю пластину. На фотографии партии такие тоже есть — на них просто нет
  * предмета, а не «предмет неизвестен».
  */
 export const apparatusLabel = (id: string | null) =>
-  APPARATUS.find((a) => a.id === id)?.label ?? "Без знака";
+  ALL_SIGNS.find((a) => a.id === id)?.label ?? "Без знака";
 
 /** Пара «предмет — цвет» с фотографии: подставляется, когда меняешь предмет. */
 export const DEFAULT_COLOR_FOR: Record<string, string> = {
@@ -193,27 +270,54 @@ export const SPEC = {
 
 /**
  * Базы пиктограмм — по одной на вид флешки, как требует чертёж.
+ * Конструкторы у всех видов одинаковые, различаются только базы
+ * картинок (правка заказчика от 08.10) — и флешка, с которой начинают.
  *
  * У гимнастики база готова: это те же семь знаков, что выгравированы
- * на партии. У подарка и учёбы баз пока нет, и придумывать их нельзя —
- * там доступен только вариант без знака, а окно выбора честно говорит,
- * чего ждёт.
+ * на партии. У учёбы и подарка пока по одному знаку, нарисованному
+ * в стиле заказчика.
  *
  * TODO(client): файлы пиктограмм для подарка и учёбы, разбитые
- * на категории, — SVG или PNG с прозрачностью в коробе 15 × 11,5 мм.
+ * на подразделы, — SVG или PNG с прозрачностью в коробе 15 × 11,5 мм.
  */
 export type IconBase = {
   label: string;
   categories: { label: string; items: Apparatus[] }[];
+  /** с какой флешки начинается конструктор: знак и цвет — как на главной */
+  start: { apparatusId: string | null; colorId: string };
 };
 
 export const ICON_BASES: Record<string, IconBase> = {
   gymnastics: {
     label: "Художественная гимнастика",
     categories: [{ label: "Предметы", items: APPARATUS }],
+    start: { apparatusId: "hoop", colorId: "red" },
   },
-  gift: { label: "Подарок", categories: [] },
-  study: { label: "Учёба", categories: [] },
+  /* Групповая программа и другие виды спорта — свои конструкторы
+     (правка заказчика от 08.10), но базы пока те же, что у личной
+     программы: какие картинки там будут, заказчик решит позже.
+     TODO(client): базы пиктограмм для групповой программы и других
+     видов спорта. */
+  group: {
+    label: "Групповая программа",
+    categories: [{ label: "Предметы", items: APPARATUS }],
+    start: { apparatusId: "ball", colorId: "violet" },
+  },
+  sport: {
+    label: "Другие виды спорта",
+    categories: [{ label: "Предметы", items: APPARATUS }],
+    start: { apparatusId: "hoop", colorId: "blue" },
+  },
+  study: {
+    label: "Учёба",
+    categories: [{ label: "Учёба", items: [PREVIEW_SIGNS[0]] }],
+    start: { apparatusId: "study", colorId: "blue" },
+  },
+  gift: {
+    label: "Подарок",
+    categories: [{ label: "Подарки", items: [PREVIEW_SIGNS[1]] }],
+    start: { apparatusId: "gift", colorId: "bronze" },
+  },
 };
 
 /**
